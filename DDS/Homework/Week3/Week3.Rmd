@@ -142,4 +142,4 @@ write.csv(college_recent_grads,file="college_recent_grad.csv")
 
 My new repository is [here](https://github.com/JennaFord/SMU-MSDS).
 
-The materials for this homework assignment are [here](https://github.com/JennaFord/SMU-MSDS/DDS/Homework/Week3).
+The materials for this homework assignment are [here](https://github.com/JennaFord/SMU-MSDS/tree/master/DDS/Homework/Week3).
