@@ -1,0 +1,145 @@
+---
+title: "Live Session Unit 3 Assignment"
+author: "Jenna Ford"
+date: "5/24/2019"
+output: html_document
+---
+
+## Question 1 - GitHub Cloning
+Clone https://github.com/caesar0301/awesome-public-datasets to your local machine.
+$ git clone https://github.com/caesar0301/awesome-public-datasets
+
+## Question 2 - Data Summary
+
+```{r getdata}
+df <- read.csv("C:/Users/b007224/Documents/masters_in_data_science/doing_data_science/awesome-public-datasets/Datasets/titanic.csv/titanic.csv",header=TRUE)
+```
+
+Output the respective counts of females and males aboard the Titanic.
+
+```{r gender}
+table(df$Sex)
+```
+
+Plot the Frequency of females and males.
+
+```{r barplot}
+barplot(table(df$Sex)
+        ,xlab="Sex"
+        ,ylab='Frequency'
+        ,main="Count of Males and Females on the Titanic")
+```
+
+Use one apply function to putput the means of Age, Fare and Survival.
+
+```{r means}
+sapply(df[,c(2,6,10)],mean,na.rm=TRUE)
+```
+
+## Question 3 - Function Building
+
+Download the sleep_data_01.csv dataset from http://talklab.psy.gla.ac.uk/L1_labs/lab_1/homework/index.html:
+
+```{r sleepdata}
+library(repmis)
+UrlAddress <- "http://talklab.psy.gla.ac.uk/L1_labs/lab_1/homework/sleep_data_01.csv"
+sleep <- repmis::source_data(UrlAddress)
+```
+Create a function
+
+```{r func}
+sleep.df <- function(dataset){
+  #Median age
+  median_age <- median(dataset$Age,na.rm=TRUE)
+
+  #Minimum duration of sleep
+  min_sleep_dir <- min(dataset$Duration,na.rm=TRUE)
+ 
+  #Maximum duration of sleep
+  max_sleep_dur <- max(dataset$Duration,na.rm=TRUE)
+
+  #Mean of the Rosenberg Self Esteem scale (RSES)
+  mean_RSES <- mean(dataset$RSES,na.rm=TRUE)
+ 
+  #Standard deviation of the Rosenberg Self Esteem scale (RSES)
+  sd_RSES <- sd(dataset$RSES,na.rm=TRUE)
+
+  #Create a data.frame
+  report <- data.frame(median_age,mean_RSES/5,sd_RSES/5,max_sleep_dur-min_sleep_dir)
+ 
+  #Rename the colmns
+  colnames(report) <-c("MedianAge","SelfEsteem","SE_SD","DurationRange")
+  
+  #Round the report to 2 digits
+  round(report,2)
+}
+```
+
+Call the sleep.df function
+
+```{r callfunc}
+sleep.df(sleep)
+```
+
+## Question 4 - FiveThirtyEight Data
+
+```{r five38}
+library(fivethirtyeight)
+df <- college_recent_grads
+```
+
+Check out [The Economic Quide to Picking a College Major](http://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/)
+for the news story from FiveThirttyEight.
+
+```{r five38dim}
+#Dimension of the data frame
+dim(df)
+
+#Columns names of the data frame
+names(df)
+```
+
+## Question 5 - Data Summary for FiveThirtyEight Data
+
+```{r summary}
+#Column names of the data frame
+names(df)
+
+# Number of columns
+ncol(df)
+```
+
+Generate a count of each unique major_category in the data frame.
+
+```{r major}
+library(plyr)
+major_count <- ddply(df, ~ major_category,summarize,n_uniq_major = length(unique(major)))
+class(major_count)
+```
+
+Plot the count of majors by major category.I couldn't get all the labels and axis labels to show up on the graph in only one barplot statement. I used the title statment to get the x axis label visible on the plot.
+
+```{r barplot2}
+par(mar=c(4,14,4,4),mgp=c(12,1,0),las=2)
+barplot(major_count$n_uniq_major
+        ,names.arg = major_count$major_category
+        ,xlab=""
+        ,ylab="Major Categories"
+        ,main="Counts of Majors by Categories"
+        ,cex.names=.75
+        ,horiz=T
+        ,col="blue"
+        ,xlim=range(pretty(c(0,major_count$n_uniq_major))))
+title(xlab="Majors",mgp=c(2,1,0))
+```
+
+Write out csv file.
+```{r csv}
+write.csv(college_recent_grads,file="college_recent_grad.csv")
+```
+
+## Question 6
+
+My new repository is [here](https://github.com/JennaFord/SMU-MSDS).
+
+The materials for this homework assignment are [here](https://github.com/JennaFord/SMU-MSDS/DDS/Homework/Week3).
