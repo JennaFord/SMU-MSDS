@@ -383,7 +383,8 @@ $(document).ready(function () {
 
 <div id="question-1---github-cloning" class="section level2">
 <h2>Question 1 - GitHub Cloning</h2>
-<p>Clone <a href="https://github.com/caesar0301/awesome-public-datasets" class="uri">https://github.com/caesar0301/awesome-public-datasets</a> to your local machine. $ git clone <a href="https://github.com/caesar0301/awesome-public-datasets" class="uri">https://github.com/caesar0301/awesome-public-datasets</a></p>
+<p>Clone <a href="https://github.com/caesar0301/awesome-public-datasets" class="uri">https://github.com/caesar0301/awesome-public-datasets</a> to your local machine.</p>
+<p>$ git clone <a href="https://github.com/caesar0301/awesome-public-datasets" class="uri">https://github.com/caesar0301/awesome-public-datasets</a></p>
 </div>
 <div id="question-2---data-summary" class="section level2">
 <h2>Question 2 - Data Summary</h2>
@@ -416,13 +417,13 @@ sleep &lt;- repmis::source_data(UrlAddress)</code></pre>
 <pre><code>## Downloading data from: http://talklab.psy.gla.ac.uk/L1_labs/lab_1/homework/sleep_data_01.csv</code></pre>
 <pre><code>## SHA-1 hash of the downloaded data file is:
 ## 3bf359e4e0545225889484f442ac2db88387e6a5</code></pre>
-<p>Create a function</p>
+<p>Create a function:</p>
 <pre class="r"><code>sleep.df &lt;- function(dataset){
   #Median age
   median_age &lt;- median(dataset$Age,na.rm=TRUE)
 
   #Minimum duration of sleep
-  min_sleep_dir &lt;- min(dataset$Duration,na.rm=TRUE)
+  min_sleep_dur &lt;- min(dataset$Duration,na.rm=TRUE)
  
   #Maximum duration of sleep
   max_sleep_dur &lt;- max(dataset$Duration,na.rm=TRUE)
@@ -434,7 +435,7 @@ sleep &lt;- repmis::source_data(UrlAddress)</code></pre>
   sd_RSES &lt;- sd(dataset$RSES,na.rm=TRUE)
 
   #Create a data.frame
-  report &lt;- data.frame(median_age,mean_RSES/5,sd_RSES/5,max_sleep_dur-min_sleep_dir)
+  report &lt;- data.frame(median_age,mean_RSES/5,sd_RSES/5,max_sleep_dur-min_sleep_dur)
  
   #Rename the colmns
   colnames(report) &lt;-c(&quot;MedianAge&quot;,&quot;SelfEsteem&quot;,&quot;SE_SD&quot;,&quot;DurationRange&quot;)
@@ -442,7 +443,7 @@ sleep &lt;- repmis::source_data(UrlAddress)</code></pre>
   #Round the report to 2 digits
   round(report,2)
 }</code></pre>
-<p>Call the sleep.df function</p>
+<p>Call the sleep.df function:</p>
 <pre class="r"><code>sleep.df(sleep)</code></pre>
 <pre><code>##   MedianAge SelfEsteem SE_SD DurationRange
 ## 1        14       3.62  1.24             7</code></pre>

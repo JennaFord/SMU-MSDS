@@ -7,6 +7,7 @@ output: html_document
 
 ## Question 1 - GitHub Cloning
 Clone https://github.com/caesar0301/awesome-public-datasets to your local machine.
+
 $ git clone https://github.com/caesar0301/awesome-public-datasets
 
 ## Question 2 - Data Summary
@@ -45,7 +46,7 @@ library(repmis)
 UrlAddress <- "http://talklab.psy.gla.ac.uk/L1_labs/lab_1/homework/sleep_data_01.csv"
 sleep <- repmis::source_data(UrlAddress)
 ```
-Create a function
+Create a function:
 
 ```{r func}
 sleep.df <- function(dataset){
@@ -53,7 +54,7 @@ sleep.df <- function(dataset){
   median_age <- median(dataset$Age,na.rm=TRUE)
 
   #Minimum duration of sleep
-  min_sleep_dir <- min(dataset$Duration,na.rm=TRUE)
+  min_sleep_dur <- min(dataset$Duration,na.rm=TRUE)
  
   #Maximum duration of sleep
   max_sleep_dur <- max(dataset$Duration,na.rm=TRUE)
@@ -65,7 +66,7 @@ sleep.df <- function(dataset){
   sd_RSES <- sd(dataset$RSES,na.rm=TRUE)
 
   #Create a data.frame
-  report <- data.frame(median_age,mean_RSES/5,sd_RSES/5,max_sleep_dur-min_sleep_dir)
+  report <- data.frame(median_age,mean_RSES/5,sd_RSES/5,max_sleep_dur-min_sleep_dur)
  
   #Rename the colmns
   colnames(report) <-c("MedianAge","SelfEsteem","SE_SD","DurationRange")
@@ -75,7 +76,7 @@ sleep.df <- function(dataset){
 }
 ```
 
-Call the sleep.df function
+Call the sleep.df function:
 
 ```{r callfunc}
 sleep.df(sleep)
