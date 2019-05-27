@@ -110,11 +110,11 @@ names(df)
 ncol(df)
 ```
 
-Generate a count of each unique major_category in the data frame.
+Generate a count for each major_category in the data frame.
 
 ```{r major}
 library(plyr)
-major_count <- ddply(df, ~ major_category,summarize,n_uniq_major = length(unique(major)))
+major_count <- ddply(df, ~ major_category,summarize,n_major = length(major))
 class(major_count)
 ```
 
@@ -122,7 +122,7 @@ Plot the count of majors by major category.I couldn't get all the labels and axi
 
 ```{r barplot2}
 par(mar=c(4,14,4,4),mgp=c(12,1,0),las=2)
-barplot(major_count$n_uniq_major
+barplot(major_count$n_major
         ,names.arg = major_count$major_category
         ,xlab=""
         ,ylab="Major Categories"
@@ -130,7 +130,7 @@ barplot(major_count$n_uniq_major
         ,cex.names=.75
         ,horiz=T
         ,col="blue"
-        ,xlim=range(pretty(c(0,major_count$n_uniq_major))))
+        ,xlim=range(pretty(c(0,major_count$n_major))))
 title(xlab="Majors",mgp=c(2,1,0))
 ```
 
