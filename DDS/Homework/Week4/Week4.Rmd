@@ -1,0 +1,100 @@
+---
+title: "MDSD 6306 Live Session Week 4 Assignment"
+author: "Jenna Ford"
+date: "5/29/2019"
+output: html_document
+---
+
+## Harry Potter Cast
+
+Scrape the [IMDB site](https://www.imdb.com/title/tt1201607/fullcredits?ref_=tt_ql_1) to get the full cast for the Harry Potter and teh Dealthy Hallows Part 2 movie. Clean up the dataframe and print out the first 15 records.
+
+```{r harry_potter}
+#Load packages
+library(stringr)
+library(xml2)
+library(rvest)
+library(tidyr)
+
+#Set URL
+url <- "https://www.imdb.com/title/tt1201607/fullcredits?ref_=tt_ql_1"
+
+#Read the 3rd table tag
+cast_list <- url %>% read_html() %>% html_nodes(xpath='//*[@id="fullcredits_content"]/table[3]') %>% html_table()
+
+#Convert to dataframe
+cast_list <- cast_list[[1]]
+
+#Remove the first row and the 1st and 3rd columns, these are all blanks
+cast_list1 <- cast_list[-1,-c(1,3)]
+
+#Add column names
+names(cast_list1) <- c("Actor","Character")
+
+#Remove extra characters from the dataframe
+cast_list2 <- as.data.frame(apply(cast_list1,2,function(x)gsub('\\s+',' ',x)))
+
+#Remove row 93 dynamically
+cast_list3 <- cast_list2[!(cast_list2$Actor=="Rest of cast listed alphabetically:"),]
+
+#Split the Actor's fullname into first and last, with middle being inluded with first
+cast_list4 <- cast_list3 %>% separate(Actor, into=c("FirstName", "Surname"), sep="[ ](?=[^ ]+$)")
+
+#Print the first 15 rows of the dataframe, I printed enough to show how the middle name was handled
+head(cast_list4,15)
+```
+
+## San Antonio Spurs Shooting Statistics
+
+Scrape the [ESPN site](http://www.espn.com/nba/team/stats/_/name/sa/san-antonio-spurs) to get stats for the San Antonio Spurs basketball team. Clean up the dataframe and create a bar chart with columns colored by position.
+
+```{r spurs}
+#Read in the data from the url
+spurs<-read_html("http://www.espn.com/nba/team/stats/_/name/sa/san-antonio-spurs")
+
+#Pull out the tables 
+spurs_table<-html_nodes(spurs,"table")
+tables <-html_table(spurs_table,fill=TRUE)
+
+# Get the right tables
+names <- data.frame(tables[6])
+stats <- data.frame(tables[8])
+
+#Combine the tables into one dataframe
+df <- cbind(names,stats)
+
+#Remove the 'Total' row
+df1 <- df[!(df$Name=="Total"),]
+
+#Separate the 'Name' column into 'Name' and 'Position' columns
+df2 <- df1 %>% separate(Name, into=c("Name", "Position"), sep="[ ](?=[^ ]+$)")
+
+#Change the variable type of 'Position' from character to factor (to group for the legend)
+df2$Position <- as.factor(df2$Position)
+
+#Change column names to indicate which are percentages
+names(df2) <- gsub(x=names(df2), pattern = "\\.$",replacement = "_Perc")
+
+#Verify that numeric columns are properly classified
+str(df2)
+
+#Identify Spurs colors (both current and previous colors)
+spurscols <- c("#8A8D8F","#000000","#EF426F","#00B2A9","#FF8200")
+
+#Create the bar chart with a legend
+par(mar=c(4,12,4,4),mgp=c(10,1,0),las=2)
+barplot(df2$FG_Perc
+        ,names=df2$Name
+        ,horiz=T
+        ,xlab=""
+        ,ylab="Player Name"
+        ,main="Field Goal Percentage Per Game"
+        ,col=spurscols[df2$Position]
+        ,xlim=range(pretty(c(0,df2$FG_Perc)))
+        ,ylim=c(0,17)
+        ,legend=TRUE)
+legend(x="top",legend=levels(df2$Position),fil=spurscols,bty="n",ncol=3)
+title(xlab="Field Goal Percentage",mgp=c(2,1,0))
+```
+
+The materials for this homework assignment can be found  [here](https://github.com/JennaFord/SMU-MSDS/tree/master/DDS/Homework/Week4).
