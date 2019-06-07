@@ -1,0 +1,94 @@
+---
+title: "MDSD 6306 Live Session Week 4 Assignment"
+author: "Jenna Ford"
+date: "6/4/2019"
+output: html_document
+---
+
+## Prepwork for the Assignment - Libraries and Downloading Data
+```{r prep}
+
+library(downloader)
+setwd("C:/Users/b007224/Documents/masters_in_data_science/SMU-MSDS/DDS/Homework/Week5")
+
+download("https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit 5/yob2015.txt",destfile="yob2015.txt")
+download("https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit 5/yob2016.txt",destfile="yob2016.txt")
+```
+
+## Question 1 - Data Munging
+
+```{r question1}
+#Read in the yob2015.txt file
+df <- read.table("yob2016.txt",sep = ";", header=FALSE)
+
+#Assign names to the columns
+names(df) <- c("firstName","gender","numberChildren")
+
+#Print summary information for the dataframe
+summary(df)
+
+#Print structure information for the dataframe
+str(df)
+
+#Identify the mispelled record
+grep("yyy$",df$firstName,value=TRUE)
+
+#Remove the mispelled record from the dataframe
+y2016 <- df[!(df$firstName==grep("yyy$",df$firstName,value=TRUE)),]
+
+```
+
+## Question 2 - Data Merging
+
+```{r}
+#Read in the yob2015.txt file
+y2015 <- read.table("yob2015.txt",sep = ",", header=FALSE)
+
+#Assign names to the columns
+names(y2015) <- c("firstName","gender","numberChildren")
+
+#Print the last 10 records of the dataset
+tail(y2015,10)
+```
+
+The last 10 names in this dataset are all male names beginning with 'Z' with a fequency of 5. Sorting is by gender, decreasing frequency and the first letter of the first name. It appears this dataset only includes names that are used 5 or more times.  It's surprising that I have I have never heard of any of these names, considering they are on a popular list of names. But perhaps it's not that surprising considering how infrequent they are. I guess if you want a name that ALMOST no-one else will have, choose one of these names...You could even start a trend!
+
+```{r}
+#Merge the datasets together using an inner join
+#The instructions only said to merge by Name, but I thought it was more appropriate to merge on name and gender
+final <- merge(x=y2016,y=y2015,union("firstName","gender"))
+
+#Rename the columns to be more clear
+names(final) <- c("firstName","gender","numberChildren.2016","numberChildren.2015")
+```
+
+## Question 3 - Data Summary
+
+```{r}
+#Create a total column for the total number of children over the 2 years by name and gender
+final$Total <- final$numberChildren.2016 + final$numberChildren.2015
+
+#Total number of people given popular names over the 2 years
+sum(final$Total)
+```
+
+I want to point out that this isn't the total number of people given popular names, only those where the name was popular in both 2015 and 2016.
+
+```{r}
+#Order the dataset by descending Total
+final <- final[order(final$Total,decreasing=TRUE),]
+
+#Print out the top 10 most popular names
+head(final,10)
+
+#Filter out the male names
+final_girls <- final[!(final$gender=="M"),]
+
+#Print the top 10 most popular girl names
+head(final_girls,10)
+
+#Write the top 10 most popular girl names to a CSV file, only including the name column
+write.csv(final_girls[1:10,1,drop=FALSE],file="top_10_girls.csv",row.names=FALSE)
+```
+
+The materials for this homework assignment can be found  [here](https://github.com/JennaFord/SMU-MSDS/tree/master/DDS/Homework/Week5).
