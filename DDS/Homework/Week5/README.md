@@ -4,8 +4,8 @@ Doing Data Science
 This is the homework for week 5 with all associated files.
 
 Here are a list of the files in this repository:
-* yob2015.txt - input dataset
-* yob2016.txt - input dataset
+* yob2015.txt - input dataset for 2015
+* yob2016.txt - input dataset for 2016
 * top_10_girls.csv - output dataset
 * Week5.Rmd - RMarkdown code
 * Week5.html - html code
@@ -30,6 +30,6 @@ The yob2015.txt dataset is read into a dataframe labeled 'y2015'. The following 
 
 A 'final' dataframe is created from the merge (inner join) between 'y2016' and 'y2015'. The keys for the merge are 'firstName' and 'gender'.
 
-'final_girls' is created to contain the top 10 most populat girl names for 2015 and 2016 combined. This is printed out to a csv file 'top_to_girls.csv'.
+'final_girls' is created to contain the top 10 most popular girl names for 2015 and 2016 combined. This is printed out to a csv file 'top_to_girls.csv'.
 
 For questions, please contact me at jennaf@mail.smu.edu.
