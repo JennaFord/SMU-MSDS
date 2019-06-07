@@ -11,8 +11,8 @@ Here are a list of the files in this repository:
 * Week5.html - html code
 
 Two datasets were used in this assignment:
-* https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit 5/yob2015.txt
-* https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit 5/yob2016.txt
+* https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%205/yob2015.txt
+* https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%205/yob2016.txt
 
 Both datasets have popular names given to infants. This homework is to help a client identify the top 10 most popular girl names from 2015 and 2016.
 
