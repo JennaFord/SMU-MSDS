@@ -1,0 +1,82 @@
+---
+title: "Week 6"
+author: "Jenna Ford"
+date: "6/11/2019"
+output: html_document
+---
+
+## Prepwork for the Assignment
+
+```{r setup}
+#Load libraries
+library(dplyr)
+library(ggplot2)
+library(repmis)
+
+#Set working directory to get file
+setwd("C:/Users/b007224/Documents/masters_in_data_science/doing_data_science/Week5")
+
+#Load file into environment
+load(file="N-MHSS-2015-DS0001-data-r.rda")
+```
+
+## Question 1
+
+```{r Question1}
+#Get distinct values for the Stat Abbreviation
+st_abbr <- distinct(mh2015_puf,LST)
+
+#Order alphabetically
+st_abbr[order(st_abbr$LST),]
+
+#Remove whitespace from LST (state abbreviation)
+mh2015_puf$LST <- trimws(mh2015_puf$LST)
+
+#Filter out non-mainland US states
+df <- mh2015_puf[!(mh2015_puf$LST %in% grep("AS|GU|PR|VI|HI|AK",mh2015_puf$LST,value=TRUE)),]
+
+#Keep only records where the facility type is the Veterans Administration
+df_filtered <- df[(df$FACILITYTYPE %in% grep("VAMC",df$FACILITYTYPE,value=TRUE)),]
+
+#Get counts by state
+va_cnt_by_state <- as.data.frame(df_filtered %>% count(LST))
+
+#Show this va_cnt_by_state is a dataframe
+class(va_cnt_by_state)
+
+#Create ggplot barchart of the VA centers by state counts
+ggplot(va_cnt_by_state,aes(x=LST,y=n,fill=LST)) + geom_bar(stat="identity",position="dodge",show.legend=FALSE) + xlab("State") + ylab("Hospital Count") + ggtitle("VA Hospital Counts by State \n Mainland States Only") + theme(plot.title = element_text(hjust = 0.5)) + theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5))
+```
+
+## Question 2
+
+```{r Question2a}
+#Get state size data
+UrlAddress <- "https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%206/statesize.csv"
+state.size <- repmis::source_data(UrlAddress)
+
+#Merge data together by state abbreviations
+va_cnt_by_size <- merge(va_cnt_by_state,state.size,by.x="LST",by.y="Abbrev",all.x=TRUE)
+```
+
+The assignment mentions an issue with a join in the previous step. I think you are referring to the extra spaces at the end of the state abbreviations in the LST column. I removed those earlier when I reviewed the data. I don't see any other issues with this data. I have the same number centers in the merged dataframe as I do in the va_cnt_by_state dataframe.
+
+```{r Question2b}
+#Calculate the number of VA hospitals per 1000 square miles
+va_cnt_by_size$va_per_1000_sq_miles <- va_cnt_by_size$n/(va_cnt_by_size$SqMiles/1000)
+
+#Plot the data by descending count/1000 sq miles and color based on region
+ggplot(va_cnt_by_size,aes(x=reorder(LST,-va_per_1000_sq_miles),y=va_per_1000_sq_miles,fill=Region)) + geom_bar(stat="identity",position="dodge") + xlab("State") + ylab("Hospital Count per 1000 SQ Miles") + ggtitle("VA Hospital Counts by State per 1000 SQ Miles\n Mainland States Only") + theme(plot.title = element_text(hjust = 0.5)) + theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5)) + theme(legend.position="bottom")
+```
+
+This graphic does not have data for DC because the square miles was not reported in the state.size file (probably because it is not a state).
+
+The Northeast has a much higher concentration of VA hospitals per 1000 square miles than the other regions. The West has the lowest concentration. 
+
+I recommend looking at the Veteran population in addition to square miles for this analysis. It is probable that there is a correlation between large Veteran populations in  states that have a high concentration of VA hospitals per 1000 square miles. I would use the metric of Veterans per VA hospital to measure this. Targeting states (areas within a state would be ideal) where there is a high concentration of Veterans per VA hospital and a low concentration of VA hospitals per 1000 square miles would maximize the benefit we are looking to provide. 
+
+Another variable I would look at is capacity (or overcrowding) at existing VA hospitals. Population density across states is not equal. Looking at whether the hospital can handle the needs of Veterans in the area would also be a good indicator of whether another VA hospital is needed in the state, and more specifically where. This methodology should not systematically choose areas with overcrowded hospitals at the expense of areas sparsely populated with hospitals. The level of care and usage of a hospital probably has some correlation with how far someone has to travel to receive care. We don't want to ignore Veterans living far away from hospitals.
+
+In summary, I don't think looking solely at the number of VA hospitals per 1000 square miles is sufficient to make any recommendations on where additional VA hospitals are needed. I would like to incorporate additional variables including Veteran population and VA hospital capacity before making any recommendations.
+
+The materials for this homework assignment can be found  [here](https://github.com/JennaFord/SMU-MSDS/tree/master/DDS/Homework/Week6).
