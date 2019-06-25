@@ -201,7 +201,7 @@ BreweriesFullDataset[which.max(BreweriesFullDataset$IBU),]
 ## Relationship between ABV & IBU
 
 ```r
-scatterplot(BreweriesFullDataset$ABV,BreweriesFullDataset$IBU,xlab="ABV",ylab="IBU",main="Relationship between ABV and IBU",smooth = FALSE, grid = FALSE, frame = FALSE, col="#35B779FF")
+scatterplot(BreweriesFullDataset$IBU,BreweriesFullDataset$ABV,xlab="IBU",ylab="ABV",main="Relationship between ABV and IBU",smooth = FALSE, grid = FALSE, frame = FALSE, col="#93e45c")
 ```
 
 ![](CaseStudy01_files/figure-html/question7-1.png)<!-- -->
