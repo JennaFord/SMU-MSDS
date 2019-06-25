@@ -1,0 +1,112 @@
+---
+title: "Craft Beer & Brewery Data Analysis"
+author: "Jenna Ford & Reannan McDaniel"
+date: "6/29/2019"
+output: 
+  html_document:
+    keep_md: yes
+---
+
+## Introduction
+
+The data provided for this analysis consists of 2410 US craft beers from 558 US breweries. Our data analysis that follows highlights the following:
+
+* A look at the data
+* How many breweries are in each state
+* Missing values for ABV & IBU measurements
+* Descriptive information for ABV
+* Median ABV & IBU by state
+* Beer with the highest ABV and beer with the highest IBU
+* Correlation between ABV and IBU
+
+## Setup: Libraries and Reading in Datasets
+```{r message=FALSE}
+library(RCurl)
+library(plyr)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(car)
+library(naniar)
+library(viridis)
+library(scales)
+
+setwd("./Data")
+
+Beers <- read.csv(file="Beers.csv")
+Breweries <- read.csv(file="Breweries.csv")
+
+opts <- options()
+options(ggplot2.continuous.colour="viridis")
+options(ggplot2.continuous.fill="viridis")
+```
+
+## A Look at the Data
+```{r question2}
+BreweriesFullDataset <- merge(Breweries,Beers, by.x = "Brew_ID", by.y = "Brewery_id",all=TRUE)
+names(BreweriesFullDataset) <- c("Brew_ID","Brewery","City","State","Beer","Beer_ID","ABV","IBU","Style","Ounces")
+head(BreweriesFullDataset,6)
+tail(BreweriesFullDataset,6)
+```
+
+## Brewery Counts by State
+```{r question1}
+BreweriesByState <- plyr::count(Breweries$State)
+
+ggplot(BreweriesByState,aes(x=reorder(x,-freq),y=freq,fill=freq)) +
+  geom_bar(stat="identity",position="dodge",show.legend=FALSE) +
+  xlab("State") +
+  ylab("Brewery Count") +
+  ggtitle("Brewery Counts by State") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5))
+```
+
+## Missing Values
+```{r question3}
+gg_miss_var(BreweriesFullDataset) +
+  ggtitle("Missing Values by Variable") + 
+  theme(plot.title = element_text(hjust = 0.5))
+gg_miss_fct(x=select(BreweriesFullDataset,State,ABV,IBU),fct=State) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5)) +
+  ggtitle("% Missing ABV & IBU Values by State")
+```
+
+## Summary Statistics for ABV
+```{r question6}
+summary(BreweriesFullDataset$ABV)
+```
+
+## Median ABV & IBU by State
+```{r question4}
+Median.ABV.IBU <- BreweriesFullDataset %>% group_by(State)%>% summarise(Median_ABV=median(ABV,na.rm=TRUE),Median_IBU=median(IBU,na.rm=TRUE))
+
+ggplot(Median.ABV.IBU,aes(x=reorder(State,-Median_ABV),y=Median_ABV,fill=Median_ABV)) +
+  geom_bar(stat="identity",position="dodge",show.legend=FALSE) + xlab("State") + ylab("ABV") +
+  ggtitle("Median ABV by State") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5))
+
+ggplot(Median.ABV.IBU,aes(x=reorder(State,-Median_IBU),y=Median_IBU,fill=Median_IBU)) +
+  geom_bar(stat="identity",position="dodge",show.legend=FALSE) +
+  xlab("State") + ylab("Median IBU by State") +
+  ggtitle("IBU by State") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5))
+```
+
+## Max ABV & IBU
+```{r question5}
+BreweriesFullDataset[which.max(BreweriesFullDataset$ABV),]
+BreweriesFullDataset[which.max(BreweriesFullDataset$IBU),]
+```
+
+## Relationship between ABV & IBU
+```{r question7}
+scatterplot(BreweriesFullDataset$ABV,BreweriesFullDataset$IBU,xlab="ABV",ylab="IBU",main="Relationship between ABV and IBU",smooth = FALSE, grid = FALSE, frame = FALSE, col="#35B779FF")
+
+cor(BreweriesFullDataset$IBU,BreweriesFullDataset$ABV,method=c("pearson","kendall","spearman"),use="complete.obs")
+lm <- lm(IBU~ABV,data=BreweriesFullDataset)
+summary(lm)$r.squared
+```
