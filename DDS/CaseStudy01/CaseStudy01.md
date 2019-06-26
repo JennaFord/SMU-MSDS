@@ -198,15 +198,29 @@ BreweriesFullDataset[which.max(BreweriesFullDataset$IBU),]
 ## 1857 American Double / Imperial IPA     12
 ```
 
-## Relationship between ABV & IBU
+## Correlation between ABV & IBU
 
 ```r
-scatterplot(BreweriesFullDataset$IBU,BreweriesFullDataset$ABV,xlab="IBU",ylab="ABV",main="Relationship between ABV and IBU",smooth = FALSE, grid = FALSE, frame = FALSE, col="#93e45c")
+ggplot(BreweriesFullDataset, aes(x=IBU, y=ABV)) +
+  geom_point(color="#93e45c") +
+  stat_smooth(method="lm",se=F) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("% Correlation between IBU and ABV")
+```
+
+```
+## Warning: Removed 1005 rows containing non-finite values (stat_smooth).
+```
+
+```
+## Warning: Removed 1005 rows containing missing values (geom_point).
 ```
 
 ![](CaseStudy01_files/figure-html/question7-1.png)<!-- -->
 
 ```r
+#scatterplot(BreweriesFullDataset$IBU,BreweriesFullDataset$ABV,xlab="IBU",ylab="ABV",main="Relationship between ABV and IBU",smooth = FALSE, grid = FALSE, frame = FALSE, col="#93e45c")
+
 cor(BreweriesFullDataset$IBU,BreweriesFullDataset$ABV,method=c("pearson","kendall","spearman"),use="complete.obs")
 ```
 

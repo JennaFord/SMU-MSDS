@@ -102,9 +102,15 @@ BreweriesFullDataset[which.max(BreweriesFullDataset$ABV),]
 BreweriesFullDataset[which.max(BreweriesFullDataset$IBU),]
 ```
 
-## Relationship between ABV & IBU
+## Correlation between ABV & IBU
 ```{r question7}
-scatterplot(BreweriesFullDataset$IBU,BreweriesFullDataset$ABV,xlab="IBU",ylab="ABV",main="Relationship between ABV and IBU",smooth = FALSE, grid = FALSE, frame = FALSE, col="#93e45c")
+ggplot(BreweriesFullDataset, aes(x=IBU, y=ABV)) +
+  geom_point(color="#93e45c") +
+  stat_smooth(method="lm",se=F) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("% Correlation between IBU and ABV")
+
+#scatterplot(BreweriesFullDataset$IBU,BreweriesFullDataset$ABV,xlab="IBU",ylab="ABV",main="Relationship between ABV and IBU",smooth = FALSE, grid = FALSE, frame = FALSE, col="#93e45c")
 
 cor(BreweriesFullDataset$IBU,BreweriesFullDataset$ABV,method=c("pearson","kendall","spearman"),use="complete.obs")
 lm <- lm(IBU~ABV,data=BreweriesFullDataset)
