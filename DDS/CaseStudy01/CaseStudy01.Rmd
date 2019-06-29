@@ -217,3 +217,5 @@ summary(lm)$r.squared
 ## Conclusion
 
 This analysis provided descriptive information about the craft beer market in the US. With the data provided, we concluded there is a market for craft beer due to different styles becoming more desirable.  We highlighted the middle 50% range for ABV of 5% and 6.7% that you should aim for during production. Opportunity for growth in establishing a brewery could be sought in states where there is already a footprint established or trending in that direction based off of the number of breweries by state. However, we think more research needs to be done with respect to beer consumption by style and state to narrow down the beer style you want to produce and the market you want to enter first.
+
+The visual presentation can be found [here](https://prezi.com/view/VWmVoDECGF76IKWRVCiR/)
