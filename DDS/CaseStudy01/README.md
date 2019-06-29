@@ -1,5 +1,4 @@
-# Beers and Breweries 
-## Craft Beer Market Analysis for Budweiser
+# Beers and Breweries - Craft Beer Market Analysis for Budweiser
 
 Budweiser is looking to enter the craft beer market in the United States. Our team was contacted in order to provide insight into the market to initially enter and the type of beer to produce. Budweiser also wanted to know some general information about the craft beer market.
 
