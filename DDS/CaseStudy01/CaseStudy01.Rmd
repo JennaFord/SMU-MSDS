@@ -9,7 +9,7 @@ output:
 
 ## Introduction
 
-Using the Beer and Breweries data files provided by Budweiser, our team was able to extrapolate information that could be beneficial in entering the craft beer market for Budweiser.  The elements we focused on were breweries by State, beer styles, Alcohol by Volume (ABV), and International Bitterness Unit (IBU).
+Using the Beer and Breweries data files provided by Budweiser, our team was able to extrapolate information that could be beneficial for Budweiser entering the craft beer market in the United States.  The elements we focused on were breweries by State, beer styles, Alcohol by Volume (ABV), and International Bitterness Units (IBU).
 
 The data provided for this analysis consists of 2410 US craft beers from 558 US breweries. The data analysis that follows highlights the following in order to describe the current craft beer market:
 
@@ -21,7 +21,7 @@ The data provided for this analysis consists of 2410 US craft beers from 558 US 
 * Beer with the highest ABV and beer with the highest IBU
 * Correlation between ABV and IBU
 
-The purpose is to give you descriptive information about the current craft beer market in the US to help direct what type of craft beer to produce and where to market it.
+The purpose is to give you descriptive information about the current craft beer market in the United States to help direct what type of craft beer to produce and where to market it.
 
 ## Setup: Libraries and Reading in Datasets
 ```{r message=FALSE}
@@ -47,10 +47,9 @@ options(ggplot2.continuous.fill="viridis")
 
 ## A Look at the Data
 
-To get a sense of the data, we have proivded the first 6 and last 6 records of the data. Reviewing the data shows that one brewery can have multiple beers that it produces and that not all values are populated for every observation. Some information about these records is provided below:
-
 All states (including D.C.) have at least one brewery and 33 states (including D.C.) have 10 or fewer breweries.
 
+To get a sense of the data, we have proivded the first 6 and last 6 records of the data. Reviewing the data shows that one brewery can have multiple beers that it produces and that not all values are populated for every observation. Some information about these records is provided below:
 
 The first six observations (sorted by by brewery ID):
 
@@ -82,7 +81,7 @@ tail(BreweriesFullDataset,6)
 
 ## Missing Values
 
-An analysis of missing values present in the data can help identify patterns. ABV and IBU were the only fields where missing values were found. It is interesting to note that there is a high percentage of missing values for IBU (42%) but not ABV (3%). Also, every instance where ABV was missing, IBU was also missing. 
+An analysis of missing values present in the data can help identify patterns. ABV and IBU were the only fields where missing values were found. It is interesting to note that there is a high percentage of missing values for IBU (42%) but not ABV (3%). Also, every record where ABV is missing, IBU is also missing. 
 
 The graph below shows that only IBU and ABV have missing values.
 
@@ -92,7 +91,7 @@ gg_miss_var(BreweriesFullDataset) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-The next chart highlights the percentage of missing values for ABV and IBU by state. SD does not have any records where IBU is populated.
+The next graph highlights the percentage of missing values for ABV and IBU by state. SD does not have any records where IBU is populated.
 
 ```{r question3b}
 gg_miss_fct(x=select(BreweriesFullDataset,State,ABV,IBU),fct=State) +
@@ -101,11 +100,11 @@ gg_miss_fct(x=select(BreweriesFullDataset,State,ABV,IBU),fct=State) +
   ggtitle("% Missing ABV & IBU Values by State")
 ```
 
-For the purpose of this analysis, we omit records when the pertinent field is missing values. FOr example, all records are used in the Brewery Counts by State graph, but 62 records are removed on the Median ABV by State graph because ABV is missing.
+For the purpose of this analysis, we omit records when the pertinent field is missing values. For example, all records are used in the Brewery Counts by State graph, but 62 records are removed on the Median ABV by State graph because ABV is missing.
 
 ## Brewery Counts by State
 
-The following charts shows brewery counts by state. Colorado, California, Michigan, Oregan and Texas are 5 states with the most craft breweries. Nevada, D.C., North Dakota, South Dakota and West Virginia are the 5 locales with the fewest craft breweries.
+The following graph shows brewery counts by state. Colorado, California, Michigan, Oregan and Texas are 5 states with the most craft breweries. Nevada, D.C., North Dakota, South Dakota and West Virginia are the 5 locales with the fewest craft breweries.
 
 ```{r question1}
 BreweriesByState <- plyr::count(Breweries$State)
@@ -119,11 +118,11 @@ ggplot(BreweriesByState,aes(x=reorder(x,-freq),y=freq,fill=freq)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5))
 ```
 
-The more saturated a market is the more difficult it may be to enter the market. More research on overall beer consumption compared to craft beer consumption by market is recommended to help identify an ideal place to enter the market.
+The more saturated a market is the more difficult it may be to enter the market. If there are only a few breweries in a market it is possible that consumption is low in that market. More research on overall beer consumption compared to craft beer consumption by market is recommended to help identify an ideal place to enter the market.
 
 ## Top 10 Beer Styles by State
 
-The top 10 beer styles out of the 100 found in the data provided are as follows (in descending order):
+The top 10 beer styles, out of the 100 found in the data provided, are as follows (in descending order):
 
 * American IPA
 * American Pale Ale (APA)
@@ -136,7 +135,7 @@ The top 10 beer styles out of the 100 found in the data provided are as follows 
 * Saison/Farmhouse Ale
 * Witbier
 
-As far as what types of beer to produce, the graph below shows the production of these top 10 beer styles by state. We are using a measure of popularity based on the number of beers produced, not consumption. This shows popularity of beers in each market.
+As far as what types of beer to produce, the graph below shows the production of these top 10 beer styles by state. We are using a measure of popularity based on the number of beers produced, not consumed. This shows popularity of beers in each market.
 
 ```{r style}
 BeerStyles <- plyr::count(Beers$Style)
@@ -148,7 +147,7 @@ ggplot(TopBeerStylesFullData,aes(x=reorder(State,-rep(1,length(State)),sum),fill
 
 ## Summary Statistics for ABV
 
-It is important to know some information about the properties of the beer when entering the craft beer market. What you see here is statistics for ABV. 
+It is important to know some information about the properties of craft beer when entering the craft beer market. What you see here are summary statistics for ABV. 
 ```{r question6}
 summary(BreweriesFullDataset$ABV)
 ggplot(BreweriesFullDataset,aes(y=ABV)) +
@@ -160,7 +159,7 @@ ggplot(BreweriesFullDataset,aes(y=ABV)) +
 
 The average ABV is 6%. The middle 50% of the data fall between 5% and 6.7%. You may want to target this range during production. 
 
-We do not include a similar view for IBU because a significant percentage of records are missing data.
+We do not include a similar view for IBU because a significant percentage of records are missing data and may not be representative of the population.
 
 ## Median ABV & IBU by State
 
