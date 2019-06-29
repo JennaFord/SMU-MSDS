@@ -21,6 +21,8 @@ The data provided for this analysis consists of 2410 US craft beers from 558 US 
 * Beer with the highest ABV and beer with the highest IBU
 * Correlation between ABV and IBU
 
+The purpose is to give you descriptive information about the current craft beer market in the US to help direct what type of craft beer to produce and where to market it.
+
 ## Setup: Libraries and Reading in Datasets
 
 ```r
@@ -46,7 +48,10 @@ options(ggplot2.continuous.fill="viridis")
 
 ## A Look at the Data
 
-To get a sense of the data we have proivded below the first 6 and last 6 records of the data. Reviewing the data shows that one brewery can have multiple beers that it produces and that not all values are populated for every observation. Some information about these records is provided below:
+To get a sense of the data, we have proivded the first 6 and last 6 records of the data. Reviewing the data shows that one brewery can have multiple beers that it produces and that not all values are populated for every observation. Some information about these records is provided below:
+
+All states (including D.C.) have at least one brewery and 33 states (including D.C.) have 10 or fewer breweries.
+
 
 The first six observations (sorted by by brewery ID):
 
@@ -55,15 +60,6 @@ The first six observations (sorted by by brewery ID):
 * The ABV range is .045-.060
 * The IBU range is 19-50
 * 6 different beer styles
-
-The last six observations (sorted by by brewery ID):
-
-* 3 different breweries comprise the last 6 observations
-* The beer size is 12oz
-* The ABV range is .043-.068
-* The IBU is not provided
-* 6 different beer styles
-* Butternuts Beer & Ale in KY is 4 of the 6 breweries
 
 
 ```r
@@ -88,6 +84,16 @@ head(BreweriesFullDataset,6)
 ## 5  26                  Milk / Sweet Stout     16
 ## 6  19                   English Brown Ale     16
 ```
+
+The last six observations (sorted by by brewery ID):
+
+* 3 different breweries comprise the last 6 observations
+* The beer size is 12oz
+* The ABV range is .043-.068
+* The IBU is not provided
+* 6 different beer styles
+* Butternuts Beer & Ale in KY is 4 of the 6 breweries
+
 
 ```r
 tail(BreweriesFullDataset,6)
@@ -117,9 +123,12 @@ tail(BreweriesFullDataset,6)
 ## 2410     12
 ```
 
+
 ## Missing Values
 
 An analysis of missing values present in the data can help identify patterns. ABV and IBU were the only fields where missing values were found. It is interesting to note that there is a high percentage of missing values for IBU (42%) but not ABV (3%). Also, every instance where ABV was missing, IBU was also missing. 
+
+The graph below shows that only IBU and ABV have missing values.
 
 
 ```r
@@ -142,11 +151,11 @@ gg_miss_fct(x=select(BreweriesFullDataset,State,ABV,IBU),fct=State) +
 
 ![](CaseStudy01_files/figure-html/question3b-1.png)<!-- -->
 
+For the purpose of this analysis, we omit records when the pertinent field is missing values. FOr example, all records are used in the Brewery Counts by State graph, but 62 records are removed on the Median ABV by State graph because ABV is missing.
+
 ## Brewery Counts by State
 
 The following charts shows brewery counts by state. Colorado, California, Michigan, Oregan and Texas are 5 states with the most craft breweries. Nevada, D.C., North Dakota, South Dakota and West Virginia are the 5 locales with the fewest craft breweries.
-
-The more saturated a market is the more difficult it may be to enter the market. More research on overall beer consumption compared to craft beer consumption by market is recommended to help identify an ideal place to enter the market.
 
 
 ```r
@@ -163,7 +172,48 @@ ggplot(BreweriesByState,aes(x=reorder(x,-freq),y=freq,fill=freq)) +
 
 ![](CaseStudy01_files/figure-html/question1-1.png)<!-- -->
 
+The more saturated a market is the more difficult it may be to enter the market. More research on overall beer consumption compared to craft beer consumption by market is recommended to help identify an ideal place to enter the market.
+
+## Top 10 Beer Styles by State
+
+The top 10 beer styles out of the 100 found in the data provided are as follows (in descending order):
+
+* American IPA
+* American Pale Ale (APA)
+* American Amber/Red Ale
+* American Blonde Ale
+* American Double/Imperial IPA
+* American Pale Wheat Ale
+* American Brown Ale
+* American Porter
+* Saison/Farmhouse Ale
+* Witbier
+
+As far as what types of beer to produce, the graph below shows the production of these top 10 beer styles by state. We are using a measure of popularity based on the number of beers produced, not consumption. This shows popularity of beers in each market.
+
+
+```r
+BeerStyles <- plyr::count(Beers$Style)
+str(BeerStyles)
+```
+
+```
+## 'data.frame':	100 obs. of  2 variables:
+##  $ x   : Factor w/ 100 levels "","Abbey Single Ale",..: 1 2 3 4 5 6 7 8 9 10 ...
+##  $ freq: int  5 2 13 18 133 29 3 36 108 70 ...
+```
+
+```r
+TopBeerStyles <- head(arrange(BeerStyles,desc(freq)), n = 10)
+TopBeerStylesFullData <- merge(x=BreweriesFullDataset,y=TopBeerStyles,by.x="Style",by.y="x",all.y=TRUE)
+ggplot(TopBeerStylesFullData,aes(x=reorder(State,-rep(1,length(State)),sum),fill=Style)) + geom_bar() + theme(axis.title.x = element_blank())  + ylab("Beer Count by Style") + ggtitle("Top 10 Beer Styles by State") + theme(plot.title = element_text(hjust = 0.5)) + theme(axis.text.x = element_text(angle=90,hjust=0,vjust=0.5)) + theme(legend.position="bottom") + theme(legend.text = element_text(size=6)) + guides(fill=guide_legend(nrow=4, byrow=TRUE)) + theme(legend.title = element_blank())
+```
+
+![](CaseStudy01_files/figure-html/style-1.png)<!-- -->
+
 ## Summary Statistics for ABV
+
+It is important to know some information about the properties of the beer when entering the craft beer market. What you see here is statistics for ABV. 
 
 ```r
 summary(BreweriesFullDataset$ABV)
@@ -188,7 +238,13 @@ ggplot(BreweriesFullDataset,aes(y=ABV)) +
 
 ![](CaseStudy01_files/figure-html/question6-1.png)<!-- -->
 
+The average ABV is 6%. The middle 50% of the data fall between 5% and 6.7%. You may want to target this range during production. 
+
+We do not include a similar view for IBU because a significant percentage of records are missing data.
+
 ## Median ABV & IBU by State
+
+The graph below shows median values for ABV by state. The range for medians is relatively tight, between 4% and 6%.
 
 ```r
 Median.ABV.IBU <- BreweriesFullDataset %>% group_by(State)%>% summarise(Median_ABV=median(ABV,na.rm=TRUE),Median_IBU=median(IBU,na.rm=TRUE))
@@ -200,13 +256,15 @@ ggplot(Median.ABV.IBU,aes(x=reorder(State,-Median_ABV),y=Median_ABV,fill=Median_
   theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5))
 ```
 
-![](CaseStudy01_files/figure-html/question4-1.png)<!-- -->
+![](CaseStudy01_files/figure-html/question4a-1.png)<!-- -->
+
+The graph below shows median values for IBU by state. The range for medians is more spread, between 20 and just over 60.
 
 ```r
 ggplot(Median.ABV.IBU,aes(x=reorder(State,-Median_IBU),y=Median_IBU,fill=Median_IBU)) +
   geom_bar(stat="identity",position="dodge",show.legend=FALSE) +
   xlab("State") + ylab("Median IBU by State") +
-  ggtitle("IBU by State") +
+  ggtitle("Median IBU by State") +
   theme(plot.title = element_text(hjust = 0.5)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust=0.5))
 ```
@@ -215,9 +273,11 @@ ggplot(Median.ABV.IBU,aes(x=reorder(State,-Median_IBU),y=Median_IBU,fill=Median_
 ## Warning: Removed 1 rows containing missing values (geom_bar).
 ```
 
-![](CaseStudy01_files/figure-html/question4-2.png)<!-- -->
+![](CaseStudy01_files/figure-html/question4b-1.png)<!-- -->
 
 ## Max ABV & IBU
+
+The beer with the maximum ABV is the 19.2oz "Lee Hill Series Vol.5 - Belgian Style Quadrupel Ale". The beer is produced by the Upslope Brewing Company in Colorado and has an ABV of 12.8%.
 
 ```r
 BreweriesFullDataset[which.max(BreweriesFullDataset$ABV),]
@@ -231,6 +291,8 @@ BreweriesFullDataset[which.max(BreweriesFullDataset$ABV),]
 ##                Style Ounces
 ## 384 Quadrupel (Quad)   19.2
 ```
+
+The most bitter beer is the 12oz "Bitter Bitch Imperial IPA". This American Double/Imperial IPA beer is produced by the Astoria Brewing Company in Oregon and has an IBU of 138.
 
 ```r
 BreweriesFullDataset[which.max(BreweriesFullDataset$IBU),]
@@ -246,6 +308,8 @@ BreweriesFullDataset[which.max(BreweriesFullDataset$IBU),]
 ```
 
 ## Correlation between ABV & IBU
+
+There is strong evidence to suggest that IBU and ABV have a moderate correlation. It is estimated that 45% of the variation in ABV can be explained by IBU.
 
 ```r
 ggplot(BreweriesFullDataset, aes(x=IBU, y=ABV)) +
@@ -296,4 +360,4 @@ summary(lm)$r.squared
 
 ## Conclusion
 
-With the data provided, we concluded there is a market for craft beer due to different styles becoming more desirable.  Opportunity for growth in establishing a brewery could be sought in states where there is already a footprint established or trending in that direction based off of the number of breweries by state. 
+This analysis provided descriptive information about the craft beer market in the US. With the data provided, we concluded there is a market for craft beer due to different styles becoming more desirable.  We highlighted the middle 50% range for ABV of 5% and 6.7% that you should aim for during production. Opportunity for growth in establishing a brewery could be sought in states where there is already a footprint established or trending in that direction based off of the number of breweries by state. However, we think more research needs to be done with respect to beer consumption by style and state to narrow down the beer style you want to produce and the market you want to enter first.
