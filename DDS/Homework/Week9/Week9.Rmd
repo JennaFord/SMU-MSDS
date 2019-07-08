@@ -1,0 +1,296 @@
+---
+title: "Week9"
+author: "Jenna Ford"
+date: "6/30/2019"
+output: html_document
+---
+
+## Clean and Prepare the Data
+Data prep will include:
+
+* Create a columns for brewery ID that is common to both datasets
+* Merge the beer and brewery datasets into a dataframe
+* Remove extra spaces in the State column
+* Create a beerCOTX dataset with only Colorado and Texas and no missing IBUs
+* Order the beerCOTX dataset by ascending IBU
+
+```{r message=FALSE}
+#Set Libraries
+library(RCurl)
+library(tidyverse)
+library(ggplot2)
+```
+```{r prep}
+#Read in the Beers and Breweries Data
+URL <- getURL("https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%209/Beers.csv")
+Beers <- read.csv(text=URL)
+
+URL1 <- getURL("https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%209/Breweries.csv")
+Breweries <- read.csv(text=URL1)
+
+#Create a columns for brewery ID that is common to both datasets
+Beers <- Beers %>% rename(Brewery_ID = Brewery_id)
+Breweries <- Breweries %>% rename(Brewery_ID = Brew_ID)
+
+#Merge the beer and brewery datasets into a dataframe
+df <- merge(Breweries,Beers, by = "Brewery_ID",all=TRUE)
+
+#Remove extra spaces in the State column
+df$State <- gsub(" ", "", df$State, fixed = TRUE)
+
+#Create a beerCOTX dataset with only Colorado and Texas and no missing IBUs
+beerCOTX <- filter(df, !is.na(IBU) & (State == 'CO' | State == 'TX'))
+
+#Order the beerCOTX dataset by ascending IBU
+beerCOTX <- beerCOTX[order(-beerCOTX$IBU),] 
+```
+
+## Create a plot of ABV vs. IBU for both Colorado and Texas
+```{r plots}
+ggplot(beerCOTX, aes(x=IBU, y=ABV)) +
+  geom_point() +
+  stat_smooth(method="lm",se=F) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Correlation between IBU and ABV") +
+  facet_wrap(~State)
+```
+
+## Model the data
+Data modeling will include:
+
+* Fit a simple linear regression model to assess the relationship between ABV and IBU for CO and TX
+* Create a scatterplot with the regression line superimposed on the plot (not using ggplot)
+* Address the assumptions of the regression model
+
+```{r regression}
+#Fit simple linear regression models
+modelTX <- lm(ABV ~ IBU, data=filter(beerCOTX,State=='TX'))
+modelCO <- lm(ABV ~ IBU, data=filter(beerCOTX,State=='CO'))
+
+#Plot the data and the regression lines
+par(mfrow=c(1,2))
+with(beerCOTX[(beerCOTX$State == 'CO'),], plot(IBU, ABV,pch=20,main="Colorado - IBU and ABV"))
+abline(modelCO)
+
+with(beerCOTX[(beerCOTX$State == 'TX'),], plot(IBU, ABV,pch=20,main="Texas - IBU and ABV"))
+abline(modelTX)
+```
+
+```{r assumptionCO}
+#Check Assumptions for CO
+par(mfrow=c(2,2))
+plot(modelCO, which=1:2)
+hist(modelCO$resid)
+```
+
+#### Assumptions for Colorado 
+
+1. Are the explanatory and response variables linearly related? - The data does appear to be linearly related based on the scatterplot and the randomness of the residuals in the Residuals vs Fitted plot. The p-values for the coefficients are significant, indicating there is a linear relationship.
+2. Are the residuals normally distributed? - The Normal QQ plot and Histogram below show that the residuals are not normally distributed and is right-skewed.
+3. Do the residuals have constant variance? - The Residuals vs Fitted plot and Histogram below show that the residuals do not have constant variance.
+4. Are the datapoints independent? - I am assuming the data are independent.
+
+```{r assumptionTX}
+#Check Assumptions for TX
+par(mfrow=c(2,2))
+plot(modelTX, which=1:2)
+hist(modelTX$resid)
+```
+
+#### Assumptions for Texas
+
+1. Are the explanatory and response variables linearly related? - The data does appear to be linearly related based on the scatterplot and the randomness of the residuals in the Residuals vs Fitted plot. The p-values for the coefficients are significant, indicating there is a linear relationship.
+2. Are the residuals normally distributed? - The Normal QQ plot and Histogram below show that the residuals are not normally distributed and is right-skewed.
+3. Do the residuals have constant variance? - The Residuals vs Fitted plot and Histogram below show that the residuals do not have constant variance.
+4. Are the datapoints independent? - I am assuming the data are independent.
+
+## Inferences from the Models
+This section will include:
+
+* Parameter estimate tables for both Colorado and Texas
+* Interpretation of the slope
+* Is there evidence that the relationship between ABV and IBU is significantly different for Colorado and Texas?
+* Confidence interval for the slope
+
+```{r inferences1}
+#Parameter Estimates
+summary(modelCO)
+summary(modelTX)
+```
+Colorado: For every 1 unit increase in IBU it is estimated that the mean ABV will increase 0.0003676.
+Texas: For every 1 unit increase in IBU it is estimated that the mean ABV will increase 0.0004172.
+
+Looking at the r-squared values of 0.4433 for Colorado and 0.596 for Texas, I would say that there is a difference in the relationship between ABV and IBU for Colorado and Texas. Texas appears to have a stronger relationship as it is estimated that 60% of the variation in ABV can be explained by IBU. This estimation is only 44% for Colorado.
+
+```{r inferences2}
+#Confidence Intervals
+confint(modelCO)
+confint(modelTX)
+```
+
+Colorado: For every 1 unit increase in IBU, it is estimated that the mean ABV will increase 0.0003676. We are 95% confident that this increase will be between 0.000299726 and 0.0004354124.
+
+Texas: For every 1 unit increase in IBU, it is estimated that the mean ABV will increase 0.0004172. We are 95% confident that this increase will be between 0.000344007 and 0.0004903987.
+
+Looking at the means and confidence intervals, I now do not think there is significant evidence to suggest that the relationship between ABV and IBU is different between Colorado and Texas. This is because the mean increase in ABV for each 1 unit increase in IBU is included in the confidence interval for the other state. Colorado's mean of 0.0003676 falls within the Texas confidence interval of [0.000344007, 0.0004903987]. Texas's mean of 0.0004172 falls within the Colorado confidence interval of [0.000299726, 0.0004354124].
+
+## Comparing Competing Models: External Cross Validation
+In this section I will compare a linear model to a quadratic model with external cross validation. The training dataset will comprise 60% of the data and the test dataset will comprise the remaining 40%.
+
+```{r validation1}
+#Create an IBU^2 column for the quadratic model and print the head of the dataframe
+beerCOTX$IBU2 <- beerCOTX$IBU^2
+head(beerCOTX)
+
+#Create separate datasets for Colorado and Texas for ease of use going forward
+beerCO <- filter(beerCOTX,State=='CO')
+beerTX <- filter(beerCOTX,State=='TX')
+
+#Specify the training dataset size of 60%
+sampleSizeCO <- floor(.6 * nrow(beerCO))
+sampleSizeTX <- floor(.6 * nrow(beerTX))
+
+#Get indices for the training dataset
+set.seed(1)
+trainIndicesCO <- sample(seq(seq_len(nrow(beerCO))),size=sampleSizeCO)
+trainIndicesTX <- sample(seq(seq_len(nrow(beerTX))),size=sampleSizeTX)
+
+#Create the training and test datasets based on the indices above
+TrainingCO <- beerCO[trainIndicesCO,]
+TestCO <- beerCO[-trainIndicesCO,]
+TrainingTX <- beerTX[trainIndicesTX,]
+TestTX <- beerTX[-trainIndicesTX,]
+
+#Print a summary of the training and test datasets
+summary(TrainingCO)
+summary(TestCO)
+summary(TrainingTX)
+summary(TestTX)
+```
+
+The section of code below fits a linear relationship between ABV and IBU. ASE loss function are calculated for training and test datasets from the linear model.
+
+```{r validation2}
+#Fit the linear model
+fitTrainingCO <- lm(ABV~IBU,data=TrainingCO)
+predsTrainingCO <- predict(fitTrainingCO)
+predsTestCO <- predict(fitTrainingCO,newdata=TestCO)
+
+fitTrainingTX <- lm(ABV~IBU,data=TrainingTX)
+predsTrainingTX <- predict(fitTrainingTX)
+predsTestTX <- predict(fitTrainingTX,newdata=TestTX)
+
+#Calculate ASE loss funtions
+ASETrainingCO <- sum((predsTrainingCO - TrainingCO$ABV)^2)/length(TrainingCO$ABV)
+ASETestCO <- sum((predsTestCO - TestCO$ABV)^2)/length(TestCO$ABV)
+ASETrainingTX <- sum((predsTrainingTX - TrainingTX$ABV)^2)/length(TrainingTX$ABV)
+ASETestTX <- sum((predsTestTX - TestTX$ABV)^2)/length(TestTX$ABV)
+
+ASETrainingCO
+ASETestCO
+ASETrainingTX
+ASETestTX
+```
+
+The section of code below fits a quadratic relationship between ABV and IBU. ASE loss function are calculated for training and test datasets from the quadratic model.
+
+```{r validation3}
+#Fit the quadratic model
+fitTrainingCO2 <- lm(ABV~IBU + IBU2, data=TrainingCO)
+predsTrainingCO2 <- predict(fitTrainingCO2)
+predsTestCO2 <- predict(fitTrainingCO2, newdata = TestCO)
+
+fitTrainingTX2 <- lm(ABV~IBU + IBU2, data=TrainingTX)
+predsTrainingTX2 <- predict(fitTrainingTX2)
+predsTestTX2 <- predict(fitTrainingCO2,newdata=TestTX)
+
+#Calculate ASE loss funtions
+ASETrainingCO2 <- sum((predsTrainingCO2 - TrainingCO$ABV)^2)/length(TrainingCO$ABV)
+ASETestCO2 <- sum((predsTestCO2 - TestCO$ABV)^2)/length(TestCO$ABV)
+ASETrainingTX2 <- sum((predsTrainingTX2 - TrainingTX$ABV)^2)/length(TrainingTX$ABV)
+ASETestTX2 <- sum((predsTestTX2 - TestTX$ABV)^2)/length(TestTX$ABV)
+
+ASETrainingCO2
+ASETestCO2
+ASETrainingTX2
+ASETestTX2
+```
+
+#### Model Comparison
+Colorado - The linear model ASE for the test data was 0.0001253569 and 0.0001221526 for the quadratic model. The training data outperformed the test data for both models.
+
+Texas - The linear model ASE for the test data was 0.0001614469 and .0001261709 for the quadratic model. The training data outperformed the test data for both models.
+
+Since the goal is to minimize the value of the ASE loss function, for both Colorado and Texas a quadratic model fits the data better. The difference between ASE values for the linear and quadratic models was very small for both states. I set the seed to 1 to ensure the same results each time. In the next section I will average together 1000 ASEs (seed not set) to get a more stable measure.
+
+```{r replicate}
+#Create holders for ASE values
+numASEs = 1000
+ASEHolderCO1 = numeric(numASEs)
+ASEHolderCO2 = numeric(numASEs)
+ASEHolderTX1 = numeric(numASEs)
+ASEHolderTX2 = numeric(numASEs)
+
+for (i in 1:numASEs)
+{
+  #Specify the training dataset size of 60%
+  sampleSizeCO <- floor(.6 * nrow(beerCO))
+  sampleSizeTX <- floor(.6 * nrow(beerTX))
+  
+  #Get indices for the training dataset
+  set.seed(NULL)
+  trainIndicesCO <- sample(seq(seq_len(nrow(beerCO))),size=sampleSizeCO)
+  trainIndicesTX <- sample(seq(seq_len(nrow(beerTX))),size=sampleSizeTX)
+  
+  #Create the training and test datasets based on the indices above
+  TrainingCO <- beerCO[trainIndicesCO,]
+  TestCO <- beerCO[-trainIndicesCO,]
+  TrainingTX <- beerTX[trainIndicesTX,]
+  TestTX <- beerTX[-trainIndicesTX,]
+
+  #Fit the linear model
+  fitTrainingCO <- lm(ABV~IBU,data=TrainingCO)
+  predsTrainingCO <- predict(fitTrainingCO)
+  predsTestCO <- predict(fitTrainingCO,newdata=TestCO)
+  
+  fitTrainingTX <- lm(ABV~IBU,data=TrainingTX)
+  predsTrainingTX <- predict(fitTrainingTX)
+  predsTestTX <- predict(fitTrainingTX,newdata=TestTX)
+  
+  #Calculate ASE loss funtions
+  ASETestCO <- sum((predsTestCO - TestCO$ABV)^2)/length(TestCO$ABV)
+  ASETestTX <- sum((predsTestTX - TestTX$ABV)^2)/length(TestTX$ABV)
+  
+  ASEHolderCO1[i] = ASETestCO
+  ASEHolderTX1[i] = ASETestTX
+
+  #Fit the quadratic model
+  fitTrainingCO2 <- lm(ABV~IBU + IBU2, data=TrainingCO)
+  predsTrainingCO2 <- predict(fitTrainingCO2)
+  predsTestCO2 <- predict(fitTrainingCO2, newdata = TestCO)
+  
+  fitTrainingTX2 <- lm(ABV~IBU + IBU2, data=TrainingTX)
+  predsTrainingTX2 <- predict(fitTrainingTX2)
+  predsTestTX2 <- predict(fitTrainingCO2,newdata=TestTX)
+  
+  #Calculate ASE loss funtions
+  ASETestCO2 <- sum((predsTestCO2 - TestCO$ABV)^2)/length(TestCO$ABV)
+  ASETestTX2 <- sum((predsTestTX2 - TestTX$ABV)^2)/length(TestTX$ABV)
+  
+  ASEHolderCO2[i] = ASETestCO2
+  ASEHolderTX2[i] = ASETestTX2
+  }
+
+mean(ASEHolderCO1)
+mean(ASEHolderTX1)
+mean(ASEHolderCO2)
+mean(ASEHolderTX2)
+```
+
+Colorado - When recording these results, I showed that from 1000 replications the average ASE for the linear model is 0.0001185278 and 0.0001193435 for the quadratic model. This indicates that the linear model performs better for Colorado.
+
+Texas - When recording these results, I showed that from 1000 replications the average ASE for the linear model is 0.00006245132 and 0.00008850603 for the quadratic model. This indicates that the linear model performs better for Texas as well.
+
+These results are surprising given the fact that when run one time with a seed of 1, the opposite was true. I re-ran the replication several times and got the same results (that the linear model performs better). This is a great example of why this type of analysis should be replicated a number of times. Had I not performed the replication piece I would have thought the quadratic model was better.
+
+This assignment has been posted on GitHub and can be found [here](https://github.com/JennaFord/SMU-MSDS/tree/master/DDS/Homework/Week9).
