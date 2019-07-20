@@ -1,0 +1,377 @@
+---
+title: "Week10-11"
+author: "Jenna Ford"
+date: "7/7/2019"
+output: html_document
+---
+
+## Clean and Prepare the Data
+Data prep will include:
+
+* Create a columns for brewery ID that is common to both datasets
+* Merge the beer and brewery datasets into a dataframe
+* Remove extra spaces in the State column
+* Create a beerCOTX dataset with only Colorado and Texas and no missing IBUs
+* Order the beerCOTX dataset by ascending IBU
+
+```{r message=FALSE}
+#Set Libraries
+library(mlr)
+library(tm) 
+library(tidyr)
+library(plyr)
+library(jsonlite)
+library(dplyr)
+library(stopwords)
+library(RCurl)
+library(tidyverse)
+library(ggplot2)
+library(caret)
+```
+```{r prep}
+#Read in the Beers and Breweries Data
+URL <- getURL("https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%209/Beers.csv")
+Beers <- read.csv(text=URL)
+
+URL1 <- getURL("https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%209/Breweries.csv")
+Breweries <- read.csv(text=URL1)
+
+#Create a columns for brewery ID that is common to both datasets
+Beers <- Beers %>% rename(Brewery_ID = Brewery_id)
+Breweries <- Breweries %>% rename(Brewery_ID = Brew_ID)
+
+#Merge the beer and brewery datasets into a dataframe
+df <- merge(Breweries,Beers, by = "Brewery_ID",all=TRUE)
+
+#Remove extra spaces in the State column
+df$State <- gsub(" ", "", df$State, fixed = TRUE)
+
+#Create a beerCOTX dataset with only Colorado and Texas and no missing IBUs
+beerCOTX <- filter(df, !is.na(IBU) & (State == 'CO' | State == 'TX'))
+
+#Order the beerCOTX dataset by ascending IBU
+beerCOTX <- beerCOTX[order(beerCOTX$IBU),] 
+```
+
+## External Cross Validation
+In this section we will concentrate on Texas data only. The data will be split 60%/40% into training and test datasets. kNN regressions with k=3 and k=5 will be run. an ASE loss function will be used to determine which model is more appropriate.
+
+```{r validation1}
+#Set seed to get reproducible results
+set.seed(1)
+#Create separate dataset for Texas for ease of use going forward
+beerTX <- filter(beerCOTX,State=='TX')
+
+#Specify the training dataset size of 60%
+sampleSizeTX <- floor(.6 * nrow(beerTX))
+
+#Get indices for the training dataset
+trainIndicesTX <- sample(seq(seq_len(nrow(beerTX))),size=sampleSizeTX)
+
+#Create the training and test datasets based on the indices above
+TrainingTX <- beerTX[trainIndicesTX,]
+TestTX <- beerTX[-trainIndicesTX,]
+
+#Print a summary of the training and test datasets
+summary(TrainingTX)
+```
+```{r validation2}
+#Print a summary of the training and test datasets
+summary(TestTX)
+```
+
+Below is the model with k=3:
+
+```{r knn3}
+#Fit the KNN regression model with k=3
+ABV <- as.data.frame(TrainingTX[,c("ABV")])
+names(ABV) <- c("ABV")
+IBU <- as.data.frame(TrainingTX[,c("IBU")])
+TestIBU <- as.data.frame(TestTX[,c("IBU")])
+names(TestIBU) <- c("IBU")
+
+fitTrainingTX3 <- knnreg(IBU, ABV[,c(1)], k=3)
+predsTrainingTX3 <- predict(fitTrainingTX3,IBU)
+predsTestTX3 <- predict(fitTrainingTX3,TestIBU)
+
+#Calculate ASE loss funtions
+ASETrainingTX3 <- sum((predsTrainingTX3 - TrainingTX$ABV)^2)/length(TrainingTX$ABV)
+ASETestTX3 <- sum((predsTestTX3 - TestTX$ABV)^2)/length(TestTX$ABV)
+
+ASETrainingTX3
+ASETestTX3
+```
+
+Below is the model with k=5:
+
+```{r knn5}
+#Fit the KNN regression model with k=5
+fitTrainingTX5 <- knnreg(IBU, ABV[,c(1)], k=5)
+predsTrainingTX5 <- predict(fitTrainingTX5,IBU)
+predsTestTX5 <- predict(fitTrainingTX5,TestIBU)
+
+#Calculate ASE loss funtions
+ASETrainingTX5 <- sum((predsTrainingTX5 - TrainingTX$ABV)^2)/length(TrainingTX$ABV)
+ASETestTX5 <- sum((predsTestTX5 - TestTX$ABV)^2)/length(TestTX$ABV)
+
+ASETrainingTX5
+ASETestTX5
+```
+
+Results: kNN with k=3 is the better model. The ASE for k=3 was 0.00006616412 and for k=5 was 0.00007293774. This shows that evaluating more neighbors isn't necessarily a good thing.
+
+I also compared these results to the resuls from the previous homework. When I ran 1000 replications of the simple linear regression and the quadratic regression, the ASEs were 0.00008576125 and 0.00008873564, respectively. The kNN regression with k=3 outperformed both of these models.
+
+The kNN model with k=3 will be used to predict the ABV for IBU values of 150, 170 and 190.
+```{r predict}
+#Predict ABV
+NewObs <- c(150,170,190)
+predict(fitTrainingTX3,NewObs)
+```
+
+Issue with using KNN to extrapolate is that the same value of ABV (0.0867) is predicted for IBUs of 150, 170 and 190 since the 3 nearest neighbors are the same for each value of y.
+
+## kNN Classification
+In this section I will use kNN classification to classify beers of the following styles: American IPA and American Pale Ale. I will use k=3 and k=5 and compare the two.
+
+This is the kNN classification with k=3:
+```{r knnclass1}
+#Filter the data to include TX and the 2 beer styles
+beertypeTX <- filter(beerCOTX,State=='TX' & (Style=='American Pale Ale (APA)' | Style=='American IPA'))
+
+#Adjust the factor for Styles so that it only has 2 levels (instead of 100 present in the original dataset)
+beertypeTX$Style <- droplevels(beertypeTX)$Style
+
+#Partition the data into 60% training and 40% test
+data_part <- createDataPartition(y = beertypeTX$IBU, p=0.60, list=F)
+test <- beertypeTX[-data_part,]
+train <- beertypeTX[data_part,]
+
+#knn using the class package and k=3
+#note...you cannot put the response (catagorical variable) in the train and test arguments
+results = class::knn(train[,c(7:8)],test[,c(7:8)],train$Style,k=3)
+test$StylePred = results
+#run table statement to see if there is a  with this statement
+table(test$Style, test$StylePred)
+confusionMatrix(table(test$Style, test$StylePred))
+```
+
+This is the kNN classification with k=5:
+```{r knnclass2}
+#knn using the class package and k=5
+#note...you cannot put the response (catagorical variable) in the train and test arguments
+results = class::knn(train[,c(7:8)],test[,c(7:8)],train$Style,k=5)
+test$StylePred = results
+confusionMatrix(table(test$Style, test$StylePred))
+```
+
+The confusion matrices show no difference in the 2 models. Both models correctly misidentify 1 beer style out of the 6 in the test dataset. The accuracy is 0.8333, sensitivity is 1 and specificity is 0.6667 for both models.
+
+## Bonus
+What is leave-one-out CV?
+
+Leave-one-out cross validation takes all the training data minus one observation and uses this as the training dataset to predict the one observation remaining. This is peformed for the number of observations in the dataset so that each observation will be left out once.
+
+Below is the leave-one-out cross validation with k=3:
+```{r loo3}
+results = class::knn.cv(beertypeTX[,c(7:8)],beertypeTX$Style,k=3)
+beertypeTX$StylePred = results
+confusionMatrix(table(beertypeTX$Style, beertypeTX$StylePred))
+```
+
+Below is the leave-one-out cross validation with k=3:
+```{r loo5}
+results = class::knn.cv(beertypeTX[,c(7:8)],beertypeTX$Style,k=5)
+beertypeTX$StylePred = results
+confusionMatrix(table(beertypeTX$Style, beertypeTX$StylePred))
+```
+
+Results: Both leave-one-out cross validations have the same results: accuracy is 0.8889, sensitivity is 0.8889 and specificity is 0.8889. Because the accuracy is higher with thee leave-one-out cross validation than the kNN classification models, I would opt for the leave-one-out model.
+
+## Unit 11 Questions - NYT Example
+
+The code below pulls information about articles published in the New York Times between 1989 and 1999 with the key words 'Central', 'Park', and 'Jogger'. This is a classification problem where I will attempt to classify the articles as 'News' or 'Other'. Training and Test datasets will be split 50%-50%. The first classification will be based on important words in the headline of the articile and the second classification will be based on important words in the snippet for the article.
+
+The code below pulls in the data and prepares it for classification.
+```{r NYT}
+#My NYT Key
+NYTIMES_KEY = "nZ8NAZv44xE4H4RXCAHtPBm2dQ33mTAP" 
+
+#Let's set some parameters
+term <- "Central+Park+Jogger" # Need to use + to string together separate words
+begin_date <- "19890101"
+end_date <- "19991231"
+
+baseurl <- paste0("http://api.nytimes.com/svc/search/v2/articlesearch.json?q=",term,
+                  "&begin_date=",begin_date,"&end_date=",end_date,
+                  "&facet_filter=true&api-key=",NYTIMES_KEY, sep="")
+
+baseurl
+
+initialQuery <- jsonlite::fromJSON(baseurl)
+maxPages <- round((initialQuery$response$meta$hits[1] / 10)-1)
+
+#Pulls the data in pages of 10 articles at a time
+pages <- list()
+for(i in 0:maxPages){
+  nytSearch <- jsonlite::fromJSON(paste0(baseurl, "&page=", i), flatten = TRUE) %>% data.frame() 
+  #message("Retrieving page ", i)
+  pages[[i+1]] <- nytSearch 
+  Sys.sleep(7) 
+}
+
+allNYTSearch <- rbind_pages(pages)
+
+#Make a column of News versus Other ... The labels
+allNYTSearch$NewsOrOther = ifelse(allNYTSearch$response.docs.type_of_material == "News","News","Other")
+#There is an NA in NewsOrOther
+
+#Train and Test Split 50%/50%
+set.seed(2)
+trainInd = sample(seq(1,dim(allNYTSearch)[1],1),round(.5*dim(allNYTSearch)[1]))
+allNYTSearchTrain = allNYTSearch[trainInd,]
+allNYTSearchTest = allNYTSearch[-trainInd,]
+```
+
+The code below runs the model using the snippet from the articles.
+```{r headline}
+#This function returns P(News | Keyword) 
+#P(News|KW) = P(KW|News)* P(News) / P(KW) 
+Pnews_word = function(key_word, trainingSet, alphaLaplace = 1, betaLaplace = 1) # alpha and beta are for laplace smoothing
+{
+  trainingSet$response.docs.headline.main = unlist(str_replace_all(trainingSet$response.docs.headline.main,"[^[:alnum:] ]", "")) #Take out all but alpha numeric characters from training headlines
+  
+  #print(key_word)
+  NewsGroup = trainingSet[trainingSet$NewsOrOther == "News",]
+  OtherGroup = trainingSet[trainingSet$NewsOrOther == "Other",]
+  
+  pNews = dim(NewsGroup)[1] / (dim(NewsGroup)[1] + dim(OtherGroup)[1])
+  pOther = 1 - pNews
+  
+  pKWGivenNews = (length(str_which(NewsGroup$response.docs.headline.main,regex(str_c("\\b",key_word,"\\b",sep=""),ignore.case = TRUE)))+alphaLaplace)/(dim(NewsGroup)[1]+betaLaplace)
+  pKWGivenOther = (length(str_which(OtherGroup$response.docs.headline.main,regex(str_c("\\b",key_word,"\\b",sep=""),ignore.case = TRUE)))+alphaLaplace)/(dim(OtherGroup)[1]+betaLaplace)
+  
+  pKW = length(str_which(trainingSet$response.docs.headline.main,regex(str_c("\\b",key_word,"\\b",sep=""),ignore.case = TRUE)))/dim(trainingSet)[1]
+  
+  pNewsGivenKW = pKWGivenNews*pNews/pKW
+  pOtherGivenKW = pKWGivenOther*pOther/pKW
+  
+  return(pNewsGivenKW)
+}
+
+theScoreHolderNews = c()
+theScoreHolderOther = c()
+articleScoreNews = 0;
+articleScoreOther = 0;
+
+
+for (i in 1 : dim(allNYTSearchTest)[1])  #This loop iterates over the articles in the Test Set
+{
+  
+  articleScoreNews = 1; 
+  articleScoreOther = 1;
+
+#The [^[:alnum:] ] replaces all non alphanumeric characters with nulls.  
+theText = unlist(str_split(str_replace_all(allNYTSearchTest[i,]$response.docs.headline.main,"[^[:alnum:] ]", ""), boundary("word"))) #Take out all but alpha numeric characters from search string ... theText holds each word in the headline as its own word.  
+
+# stopwords() #from package tm
+wordsToTakeOut = stopwords()
+
+# put word boundaries stopwords so that we don't detect partial words later
+wordsToTakeOut = str_c(wordsToTakeOut,collapse = "\\b|\\b") 
+wordsToTakeOut = str_c("\\b",wordsToTakeOut,"\\b")
+#wordsToTakeOut
+
+importantWords = theText[!str_detect(theText,regex(wordsToTakeOut,ignore_case = TRUE))]
+
+#importantWords
+
+  for(j in 1 : length(importantWords))  #This loop iterates over the important words in the headline
+  {
+    articleScoreNews = articleScoreNews * Pnews_word(importantWords[j],allNYTSearchTrain)
+    articleScoreOther = articleScoreOther * (1 - Pnews_word(importantWords[j],allNYTSearchTrain))
+  }
+  theScoreHolderNews[i] = articleScoreNews
+  theScoreHolderOther[i] = articleScoreOther
+}
+
+# Classify the aricle as News or Other based on a given piece of information from the article.
+allNYTSearchTest$Classified = ifelse(theScoreHolderNews > theScoreHolderOther,"News","Other")
+
+#Confusion Matrix
+confusionMatrix(table(allNYTSearchTest$Classified,allNYTSearchTest$NewsOrOther)) #Actual in Columns
+```
+
+The confusion matrix for the classification using the article's headline is above. The accuracy was 54.28%, sensitivity was 53.61% and specificity was 56.35%.
+
+The code below runs the model using the snippet from the articles.
+```{r snippet}
+Pnews_word = function(key_word, trainingSet, alphaLaplace = 1, betaLaplace = 1) # alpha and beta are for laplace smoothing
+{
+  trainingSet$response.docs.headline.main = unlist(str_replace_all(trainingSet$response.docs.headline.main,"[^[:alnum:] ]", "")) #Take out all but alpha numeric characters from training headlines
+  
+  #print(key_word)
+  NewsGroup = trainingSet[trainingSet$NewsOrOther == "News",]
+  OtherGroup = trainingSet[trainingSet$NewsOrOther == "Other",]
+  
+  pNews = dim(NewsGroup)[1] / (dim(NewsGroup)[1] + dim(OtherGroup)[1])
+  pOther = 1 - pNews
+  pKWGivenNews = (length(str_which(NewsGroup$response.docs.snippet,regex(str_c("\\b",key_word,"\\b",sep=""),ignore.case = TRUE)))+alphaLaplace)/(dim(NewsGroup)[1]+betaLaplace)
+  pKWGivenOther = (length(str_which(OtherGroup$response.docs.snippet,regex(str_c("\\b",key_word,"\\b",sep=""),ignore.case = TRUE)))+alphaLaplace)/(dim(OtherGroup)[1]+betaLaplace)
+  
+  pKW = length(str_which(trainingSet$response.docs.snippet,regex(str_c("\\b",key_word,"\\b",sep=""),ignore.case = TRUE)))/dim(trainingSet)[1]
+  
+  pNewsGivenKW = pKWGivenNews*pNews/pKW
+  pOtherGivenKW = pKWGivenOther*pOther/pKW
+  
+  return(pNewsGivenKW)
+}
+
+theScoreHolderNews = c()
+theScoreHolderOther = c()
+articleScoreNews = 0;
+articleScoreOther = 0;
+
+
+for (i in 1 : dim(allNYTSearchTest)[1])  #This loop iterates over the articles in the Test Set
+{
+  
+  articleScoreNews = 1; 
+  articleScoreOther = 1;
+
+#The [^[:alnum:] ] replaces all non alphanumeric characters with nulls.  
+theText = unlist(str_split(str_replace_all(allNYTSearchTest[i,]$response.docs.snippet,"[^[:alnum:] ]", ""), boundary("word"))) #Take out all but alpha numeric characters from search string ... theText holds each word in the headline as its own word.  
+
+# stopwords() #from package tm
+wordsToTakeOut = stopwords()
+
+# put word boundaries stopwords so that we don't detect partial words later
+wordsToTakeOut = str_c(wordsToTakeOut,collapse = "\\b|\\b") 
+wordsToTakeOut = str_c("\\b",wordsToTakeOut,"\\b")
+#wordsToTakeOut
+
+importantWords = theText[!str_detect(theText,regex(wordsToTakeOut,ignore_case = TRUE))]
+
+#importantWords
+
+  for(j in 1 : length(importantWords))  #This loop iterates over the important words in the headline
+  {
+    articleScoreNews = articleScoreNews * Pnews_word(importantWords[j],allNYTSearchTrain)
+    articleScoreOther = articleScoreOther * (1 - Pnews_word(importantWords[j],allNYTSearchTrain))
+  }
+  theScoreHolderNews[i] = articleScoreNews
+  theScoreHolderOther[i] = articleScoreOther
+}
+
+# Classify the aricle as News or Other based on a given piece of information from the article.
+allNYTSearchTest$Classified = ifelse(theScoreHolderNews > theScoreHolderOther,"News","Other")
+
+#Confusion Matrix
+confusionMatrix(table(allNYTSearchTest$Classified,allNYTSearchTest$NewsOrOther)) #Actual in Columns
+```
+
+The confusion matrix for the classification using the article's snippet is above. The accuracy was 65.56%, sensitivity was 84.79% and specificity was 6.3%.
+
+Comparing the accuracy of the two confusion matrices, using the article's snippet makes for a better classifier because the accuracy is higher.
+
+This assignment has been posted on GitHub and can be found [here](https://github.com/JennaFord/SMU-MSDS/tree/master/DDS/Homework/Week10-11).
