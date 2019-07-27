@@ -1,0 +1,101 @@
+---
+title: "DDS Live Session Week 12 Assignment"
+author: "Jenna Ford"
+date: "7/26/2019"
+output: html_document
+---
+
+## Loading Libraries
+```{r message=FALSE}
+library(fpp2)
+library(RCurl)
+library(dygraphs)
+library(xts)
+library(lubridate)
+
+```
+
+## Warm-Up: Brief Financial Data
+
+The data in this section is for the DAX stock market index from 1991-1999 (from the EuStockMarkets dataset in R). A plot of the data is provided first, followed by a decomposition plot that separates out the seasonal, trend and random components with a multiplicative model.
+
+```{r warmup}
+dax = EuStockMarkets[,"DAX"]
+plot(dax,ylab = "Closing Price", xlab = "Date", main="DAX Index Daily Closing Prices",col="blue", sub="Market Crash on October 27, 1997")
+
+#I estimated where the market crash of Oct 27, 1997 is on the plot
+abline(v=1997.823, col="red")
+
+decomp <- decompose(dax, type="mult")
+plot(decomp,col="blue", xlab = "Date",sub="Market Crash on October 27, 1997")
+abline(v=1997.823, col="red")
+```
+
+## Temperature Data
+
+The data for this section is from the maxtemps dataset in R. It has the maximum annual temperatures for the Moorabbin Airport in Melbourne for 1971-2016. 2 models will be fitted: a simple exponential smoothing model and a damped Holt's linear trend model.The 2 models will be compared to see which is the better fit.
+
+```{r temp}
+#Get data for 1990 onward
+temp = window(maxtemp, start = 1990)
+
+#SES Model
+fit1 = ses(temp, h = 5) 
+plot(temp,ylab = "Max Temp", xlab = "Year", type = "o", xlim=c(1990,2021), main="Max Annual Temperatures at Moorabbin Airport")
+lines(fitted(fit1), col = "blue", type = "o")
+lines(fit1$mean, col = "blue", type = "o")
+
+#Damped Holt's Linear Model
+fit2h = holt(temp, alpha = .8, beta = .2, damped = TRUE, initial="optimal", h = 5)
+plot(temp,ylab = "Max Temp", xlab = "Year", type = "o", xlim=c(1990,2021), main="Max Annual Temperatures at Moorabbin Airport")
+lines(fitted(fit2h), col = "blue", type= "o")
+lines(fit2h$mean,col = "blue", type= "o")
+
+#Plot together
+plot(temp,ylab = "Max Temp", xlab = "Year", type = "o", xlim=c(1990,2021), main="Max Annual Temperatures at Moorabbin Airport")
+lines(fitted(fit1), col = "blue", type = "o")
+lines(fit1$mean, col = "blue", type = "o")
+lines(fitted(fit2h), col = "red", type= "o")
+lines(fit2h$mean,col = "red", type= "o")
+
+#Compare ASE for both models
+ASE1 <- sum((fitted(fit1) - maxtemp)^2)/length(temp)
+ASE2h <- sum((fitted(fit2h) - maxtemp)^2)/length(temp)
+
+ASE1
+ASE2h
+```
+
+The ASE for the Simple exponential smoothing model was 5.39 compared to 8.95 for Holt's damped linear model. As such, The SES model performs better using ASE.
+
+```{r temp2}
+fit1$model
+fit2h$model
+```
+
+The AIC and BIC scores were both minimized in the SES model. The SES model performs better using AIC and BIC criterion. Both ASE and AIC/BIC show that SES is the better model.
+
+## The Wands Choose the Wizard
+
+The data for this section is wands sold by Ollivander and Gregorovitch from the Harry Potter Series. First, the 2 data sets will be combined into one timestamp series. Then a dynamic graph will be produced.
+
+```{r wizard}
+URL <- getURL("https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%2012/Unit12TimeSeries_Ollivander.csv")
+ollivander <- read.csv(text=URL, header=FALSE)
+names(ollivander) <- c("date","ollivander")
+
+URL <- getURL("https://raw.githubusercontent.com/BivinSadler/MSDS-6306-Doing-Data-Science/master/Unit%2012/Unit12TimeSeries_Gregorovitch.csv")
+gregorovitch <- read.csv(text=URL, header=FALSE)
+names(gregorovitch) <- c("date","gregorovitch")
+
+ollivander$date2 <- mdy(ollivander$date) 
+tsollivander <- xts(ollivander$ollivander, ollivander$date2)
+names(tsollivander) <- c("ollivander")
+
+gregorovitch$date2 <- mdy(gregorovitch$date) 
+tsgregorovitch <- xts(gregorovitch$gregorovitch, gregorovitch$date2)
+names(tsgregorovitch) <- c("gregorovitch")
+
+combined = merge(tsollivander,tsgregorovitch)
+dygraph(combined, main="Ollivander and Gregorovitch Yearly Wands Sales", xlab="Year", ylab="Wands Sold") %>% dyRangeSelector(height = 100) %>% dySeries("ollivander",color="orange") %>% dySeries("gregorovitch",color="purple") %>% dyShading(from="1995-01-01", to="1999-01-01", color="lightgray") %>% dyHighlight(highlightSeriesOpts=list(strokeWidth=3))
+ ```
