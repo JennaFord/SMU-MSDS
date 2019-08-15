@@ -1,0 +1,487 @@
+---
+title: "DDS Analytics Attrition Study"
+author: "Jenna Ford"
+date: "8/17/2019"
+output: html_document
+---
+
+## Introduction
+
+DDSAnalytics specializes in talent management for Fortune 100 Companies. Attrition in companies can be very costly when considering the costs of recruitment, onboarding, relocation and training. To gain a competitive edge over other talent management firms, I have been tasked with identifying a way to predict employees who have a high chance of leaving. The goal is to identify what characteristics lead to higher turn-over so that a company can focus on retaining employees with these characteristics.
+
+As part of this analysis I will also provide insights into trends for various Job Roles and predictions for Salaries.
+
+## Data
+
+The data provided by DDSAnalytics comprises of 39 attributes for 870 employee observations. A summary of the data is below. I removed 4 columns from the data because the values were the same across all observations or were irrelevant to the analysis: EmployeeCount (value=1), EmployeeNumber (unique to each employee), Over18 (value=Yes), StandardHours (value=80).
+
+```{r message=FALSE, warning=FALSE}
+#Load Libraries
+library(ggplot2)
+library(ggcorrplot)
+library(cowplot)
+library(dplyr)
+library(class)
+library(caret)
+library(tidyr)
+library(magrittr)
+```
+
+```{r data0}
+#Read in the data
+data <- read.csv("C:/Users/b007224/Documents/masters_in_data_science/SMU-MSDS/DDS/CaseStudy02/Data/CaseStudy2-data.csv", header=TRUE)
+
+data_compset <- read.csv("C:/Users/b007224/Documents/masters_in_data_science/SMU-MSDS/DDS/CaseStudy02/Data/CaseStudy2CompSet No Attrition.csv", header=TRUE)
+
+data_salary_compset <- read.csv("C:/Users/b007224/Documents/masters_in_data_science/SMU-MSDS/DDS/CaseStudy02/Data/CaseStudy2CompSet No Salary.csv", header = TRUE)
+
+#Remove columns with same value for all observations
+data1 <- data[,!(names(data) %in% c("EmployeeCount","Over18","StandardHours","EmployeeNumber"))]
+
+data1_compset <- data_compset[,!(names(data_compset) %in% c("EmployeeCount","Over18","StandardHours","EmployeeNumber"))]
+
+data1_salary_compset <- data_salary_compset[,!(names(data_salary_compset) %in% c("EmployeeCount","Over18","StandardHours","EmployeeNumber"))]
+
+#Abbreviate categorical variables
+data$EducationField_abbr <- recode(data$EducationField, "Human Resources"="HR", "Technical Degree" = "Tech", "Life Sciences"="LifeSci", .default=levels(data$EducationField))
+
+data$Department_abbr <- recode(data$Department, "Research & Development" = "R&D", .default=levels(data$Department))
+
+data$JobRole_abbr <- recode(data$JobRole, "Healthcare Representative" = "Healthcare Rep","Human Resources"="HR","Laboratory Technician"="Lab Tech","Manufacturing Director"="Mfg Dir","Research Director"="Research Dir","Research Scientist"="Research Sci","Sales Executive"="Sales Exec","Sales Representative"="Sales Rep", .default=levels(data$JobRole))
+```
+
+```{r data, fig.height=10, fig.width=10}
+str(data1)
+```
+
+## Job Role Trends
+
+While exploring the data, I noticed that there were certain characteristics that stand out in regards to an employee's Job Role. These will be discussed individually below (in no particular order):
+
+* Attrition
+* Age
+* Environment Satisfaction
+* Job Satisfaction
+* Overtime
+* Total Working Years
+* Years at Company
+* Work Life Balance
+* Gender
+* Marital Status
+
+### Attrition
+
+The graph below highlights the significant difference in attrition rates by Job Role. Sales Representatives have a 45% attrition rate, while Research and Manufacturing Directors have only a 2% attrition rate. 
+
+```{r jobrole1, fig.width=10}
+ggplot(data,aes(Attrition, group=JobRole_abbr))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~JobRole_abbr) + theme(legend.position="none") + ggtitle("JobRole vs Attrition")
+```
+
+### Age
+
+Managers have the highest average age at 48. Sales Representatives have the lowest average at 30.  Managers also have the largest makeup of employees 50 and over. It will be important to make sure that a plan is put in place to ensure a smooth transition when these employees retire.
+
+```{r jobrole2, fig.width=10}
+ggplot(data=data, mapping=aes(x=Age, fill=JobRole, color=JobRole)) + geom_density(alpha=.3) + ggtitle("Job Role vs Age") + ylab("Density")
+```
+
+### Environment Satisfaction
+
+Environment satisfaction is rated on a scale from 1-4, with 4 being highly satisfied with the work environment. Manufacturing Directors have the highest number of employees that rated a 4 (38%) and the lowest number of employees that rated a 1 (10%). Learning why Manufacturing Directors are more satisfied with their environment could help create a set of best practices for a company.
+
+```{r jobrole3, fig.width=10}
+ggplot(data,aes(EnvironmentSatisfaction , group=JobRole_abbr))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~JobRole_abbr) + theme(legend.position="none") + ggtitle("Job Role vs Environment Satisfaction")
+```
+
+### Job Satisfaction
+
+Job satisfaction is rated on a scale from 1-4, with 4 being highly satisfied with the job. Healthcare Representatives have the highest number of employees that rated a 4 (37%), followed closely by Research Scientists (35%). On the other end of the scale, Research Directors have the highest number of employees that rated a 1 (25%), followed closely by Research Directors (24%). It is also interesting to note that while Healthcare Representatives have the highest number of employees rating a 4, they also have a high percentage of employees rating a 1 (21%). More research could be done here to determine why so many Healthcare Representatives rated a 1 and a 4.
+
+```{r jobrole4, fig.width=10}
+ggplot(data,aes(JobSatisfaction , group=JobRole_abbr))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~JobRole_abbr) + theme(legend.position="none") + ggtitle("Job Role vs Job Satisfaction")
+```
+
+### Overtime
+
+Research Scientists have the highest percentage of employees working overtime (34%). Managers have the lowest percentage of employees working overtime (20%). If any of these employees are being paid on an hourly basis, more research should be done to determine if it is more beneficial to have high overtime or to hire additional employees. As will see below, overtime is one of the factors that contributes to attrition. It may be cheaper to reduce overtime and higher more employees instead of having employees leave.
+
+```{r jobrole5, fig.width=10}
+ggplot(data,aes(OverTime, group=JobRole_abbr))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~JobRole_abbr) + theme(legend.position="none") + ggtitle("Job Role vs Overtime")
+```
+
+### Years at the Company
+
+83% of Sales Representatives have been at the company less than 5 years. This aligns with the high attrition rate for Sales Representatives. No Sales Representatives have been at the company 15 or more years, while 47% of Managers have been at the company 15 or more years. This large difference may be due to the nature of the Sales industry. However, it appears that attrition efforts could be focused on Sales Representatives to make a big impact.
+
+```{r jobrole6, fig.width=10}
+ggplot(data=data, mapping=aes(x=YearsAtCompany, fill=JobRole, color=JobRole)) + geom_density(alpha=.3) + ggtitle("Job Role vs Years At Company") + ylab("Density")
+```
+
+### Work Life Balance
+
+Work life balance is rated on a scale from 1-4, with 4 being a great balance. 85% of Human Resource employees rated work life balance a 3 or 4, compared to only 65% for Research Scientists.
+
+```{r jobrole7, fig.width=10}
+ggplot(data,aes(WorkLifeBalance, group=JobRole_abbr))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~JobRole_abbr) + theme(legend.position="none") + ggtitle("Job Role vs Work Life Balance")
+```
+
+### Gender
+
+Human Resources employees and Laboratory Technicians have the largest discrepancy between men and women, both have 67% men and 33% women. Managers and Sales Representatives show a nearly 50%/50% split.
+
+Gender equality in the workplace is a common topic in the media. Focus should be placed on ensuring that hiring practices are fair across gender. While a large discrepancy between the percentage of men and women working in a particular job role is not an indication of gender discrimination, audits may need to be performed to ensure it is not happening. Additionally, programs may need to be developed to equalize significant differences.
+
+```{r jobrole8, fig.width=10}
+ggplot(data,aes(Gender, group=JobRole_abbr))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~JobRole_abbr) + theme(legend.position="none") + ggtitle("Job Role vs Gender")
+```
+
+### Marital Status
+
+Interesting to note, though perhaps not surprising due to the nature of the job, is that Sales Representatives have the highest percentage of employees who are single (49%). This could be related to the level of travel necessary for this type of position and the young average age of these employees.
+
+```{r jobrole9, fig.width=10}
+ggplot(data,aes(MaritalStatus, group=JobRole_abbr))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~JobRole_abbr) + theme(legend.position="none") + ggtitle("Job Role vs Marital Status")+ theme(axis.text.x = element_text(angle=90, hjust=1))
+
+```
+
+## Predicting Attrition
+
+To predict attrition, we need to know what factors contribute to it. The following graphs show the relationship between various factors that correlate with attrition.
+
+### Age
+
+The younger an employee, the higher the change they will leave the company. 24% of employees 33 years old and younger leave, but only 11% of employees 34 and over leave.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data=data, mapping=aes(x=Age, fill=Attrition, color=Attrition)) + geom_density(alpha=.3) + ggtitle("Age vs Monthly Income") + ylab("Density")
+```
+
+### Business Travel
+
+A stronger correlation is found for Business Travel. 22% of employees who travel frequently have left the company, compared to only 12% of employees who do not travel.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(Attrition, group=BusinessTravel))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~BusinessTravel) + theme(legend.position="none") + ggtitle("Business Travel")
+```
+
+### Gender
+
+Gender does not appear to have a strong relationship to Attrition: 15% of women and 17% of men have left the company.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(Attrition, group=Gender))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Gender) + theme(legend.position="none") + ggtitle("Gender")
+```
+
+### Monthly Income
+
+There is a large spike of employees leaving who are paid close to $2,500 a month. In general, the more an employee is paid, the higher likelihood they will stay at the company.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data=data, mapping=aes(x=MonthlyIncome, fill=Attrition, color=Attrition)) + geom_density(alpha=.3) + ggtitle("Attrition vs Monthly Income") + ylab("Density")
+```
+
+### Level of Education
+
+The graph below shows that lower levels of education (1-3) have higher attrition rates. Higher levels of education (4-5) have lower attrition rate.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(Education, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Level of Education")
+```
+
+### Environment Satisfaction
+
+30% of employees who leave the company are not satisfied with their environment, compared to only 18% of employees who do not leave the company. Employees who are highly satisfied with their work environment have a higher tendency to stay at the company.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(EnvironmentSatisfaction, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Environment Satisfaction")
+```
+
+### Job Involvement
+
+Job involvement is a key factor in predicting attrition. Of the employees who leave, 47% of them rate job involvement as a 1 or 2, compared to only 28% of employees who stay.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(JobInvolvement, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Job Involvement")
+```
+
+### Job Level
+
+Job level is another variable that plays a key role in predicting attrition. 26% of employees at the lowest job level will leave the company. This goes does to 11% for employees at the next job level. This could be an important place to focus to decrease attrition, where appropriate.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(JobLevel, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Job Level")
+```
+
+### Job Role
+
+Sales Representatives have the highest attrition rate (45%). Research Directors have the lowest attrition rate (2%).
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(Attrition, group=JobRole_abbr))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~JobRole_abbr) + theme(legend.position="none") + ggtitle("JobRole")
+```
+
+### Job Satisfaction
+
+Correlation can be found with job satisfaction as well. 62% of employees who stay at the company have high job satisfaction (rating of 3 or 4), compared to only 51% of employees who leave.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(JobSatisfaction, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Job Satisfaction")
+```
+
+### Marital Status
+
+Attrition and marital status appears to be highly correlated. 26% of single employees have left the company and only 6% of divorced employees. There is also correlation between age and marital status, which we saw with sales representatives earlier.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(Attrition, group=MaritalStatus))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~MaritalStatus) + theme(legend.position="none") + ggtitle("Marital Status")
+```
+
+### Number of Companies Worked At
+
+19% of employees who have worked at 2 companies will leave, compared to only 10% of employees who have only worked at 1 company.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(NumCompaniesWorked, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Number of Companies Worked At")
+```
+
+### Over Time
+
+There is strong correlation between overtime and attrition with 32% of employees who work overtime leaving the company, compared to only 10% who do not work overtime.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(Attrition, group=OverTime))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~OverTime) + theme(legend.position="none") + ggtitle("Over Time")
+```
+
+### Percent Salary Hike
+
+Contrary to what I would have thought, employees who have a lower salary increase are more likely to stay at the company. 
+
+```{r fig.height=5, fig.width=10}
+ggplot(data=data, mapping=aes(x=PercentSalaryHike, fill=Attrition, color=Attrition)) + geom_density(alpha=.3) + ggtitle("Attrition vs Percent Salary Hike") + ylab("Density")
+```
+
+### Performance Rating
+
+Attrition rates based on performance rating are almost identical. I suspect part of the reason is that the only employees included in the dataset were employees with higher performance ratings. 
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(PerformanceRating, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Performance Rating")
+```
+
+### Relationship Satisfaction
+
+Employees who are highly unsatisfied with the relationships they have in the office are more likely to leave the company than employees who are highly satisfied (20% attrition rate compared to 16%).
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(RelationshipSatisfaction, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Relationship Satisfaction")
+```
+
+### Stock Option Level
+
+70% of employees who leave have a level 1 stock option. This represents 26% of all employees who have a level 1 stock option.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(StockOptionLevel, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Stock Option Level")
+```
+
+### Total Working Years
+
+Very few employees who have been in the workforce for more than 25 years will leave the company. Perhaps a bit surprising is that employees who have been at the company 1 year have a 48% attrition rate. This group of employees could be a good place to focus retention efforts to make a big impact.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(TotalWorkingYears, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Total Working Years")
+```
+
+### Work Life Balance
+
+Employees who report a low work life balance (rating of 1) have a 35% attrition rate. Moderate to good work life balance ratings do not show much difference in attrition rates.
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(WorkLifeBalance, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Work Life Balance")
+```
+
+### Years at the Company 
+
+Similar to what we saw with Total Working years, employees who have worked at the company for 1 year have a much higher attrition rate (at 33%). 
+
+```{r fig.height=5, fig.width=10}
+ggplot(data,aes(YearsAtCompany, group=Attrition))+ geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count") + scale_y_continuous(labels=scales::percent) + ylab("Relative Frequencies") + facet_grid(~Attrition) + theme(legend.position="none") + ggtitle("Years At Company")
+```
+
+## kNN Classification for Attrition
+
+I used k nearest neighbor classification, with a cross validation split of 70%/30%, to predict attrition. The kNN model looks at other observations that are close (based on distance) to the one you are trying to predict. Each neighbor essentially gets a vote, and the votes for each neighbor are averaged for the prediction. Due to the nature of calculating distances, all variables in the model need to be numeric.
+
+The variables that ended up best able to predict attrition are overtime, marital status, job involvement and job role. Employees that work overtime are less satisfied with their job and will look elsewhere. Marital status plays a role in attrition as well. If you are single it is easier to look for another job. One possible reason is that you don't have a spouse and/or children that would need to relocate if the new job requires relocation. Job involvement has a negative correlation with attrition: the more involved you are, the less likely you are to leave. 
+
+I tested adding in other variables with high correlation, but the model performed worse. I was particularly interested to see how Job Role influenced attrition in the model. The model performed worse when I added this in. When reviewing attrition rates by job role, it was primarily Sales Representatives who stood out as having a high % for attrition. Therefore, I recoded the Job Role field so that it only identified Sales Representatives or not Sales Representatives. The model performed better with this addition.
+
+I tested using a different number of neighbors. 3 neighbors gave the best model with a sensitivity of 96.82% and a specificity of 31.71%. This means that 96.82 % of employees who will not leave are correctly identified, but only 32% of employees who will leave are correctly identified.
+
+```{r attrition}
+#Data prep for the model
+knn_data <- data1
+knn_data$overtime <- as.numeric(knn_data$OverTime)
+knn_data$maritalstatus <- as.numeric(knn_data$MaritalStatus)
+knn_data$jobrole <- recode(knn_data$JobRole, "Sales Representative"=2,.default=1)
+
+#Specify the training dataset size of 70%
+set.seed(1)
+sampleSize <- sample(1:nrow(knn_data), .7 * nrow(knn_data))
+
+#Create the training and test datasets based on the indices above
+Train <- knn_data[sampleSize,]
+Test <- knn_data[-sampleSize,]
+
+#Fit the KNN model with k=3
+target_category <- Train[,c("Attrition")]
+test_category <- Test[,c("Attrition")]
+
+#Set seed to get reproducible results
+set.seed(1)
+pr <- knn(Train[,c("overtime","JobInvolvement","maritalstatus","jobrole")],Test[,c("overtime","JobInvolvement","maritalstatus","jobrole")],cl=target_category,k=3)
+
+#Create confusion Matrix
+confusionMatrix(table(pr,test_category))
+```
+
+## Logistic Regression for Attrition
+
+Due to the low specificity for the kNN model, I also ran a logistic regression to see if I could improve this. Logistic regression is performed when the response variable (attrition) is binary (Yes/No). I started with a model using all the variables, but fine-tuned it to include the following variables:
+
+* Age
+* Business Travel
+* Distance From Home
+* Education
+* Environment Satisfaction
+* Education level
+* Environment Satisfaction
+* Job Involvement
+* Job Level
+* Job Role
+* Job Satisfaction
+* Marital Status
+* Numer of Companies Worked At
+* Overtime
+* Percent Salary Hike
+* Performance Rating
+* Relationship Satisfaction
+* Total Working Years
+* Work Life Balance
+* Years at the Company
+
+```{r lg}
+set.seed(1)
+sampleSize <- sample(1:nrow(data1), .65 * nrow(data1))
+
+#Create the training and test datasets based on the indices above
+Train <- data1[sampleSize,]
+Test <- data1[-sampleSize,]
+
+#Create the logistic regression model
+fit <- glm(Attrition ~ Age + BusinessTravel  + DistanceFromHome + Education + EnvironmentSatisfaction + JobInvolvement + JobLevel + JobRole + JobSatisfaction  + MaritalStatus + NumCompaniesWorked + OverTime  + PercentSalaryHike + PerformanceRating + RelationshipSatisfaction + TotalWorkingYears + WorkLifeBalance +  YearsAtCompany, data=Train, family=binomial(link='logit'))
+
+#Get predictions for the test set
+pred <- predict(fit, Test, type="response")
+pred <- as.data.frame(predict(fit, Test, type="response"))
+names(pred) <- c("Attrition")
+pred %<>% mutate(attrition=case_when(Attrition < .5 ~ "No", Attrition >= .50 ~ "Yes"))
+pred$attrition <- as.factor(pred$attrition)
+Test$Attrition <- as.factor(Test$Attrition)
+
+#Print the sensitivity and specificity %s
+confusionMatrix(pred$attrition,Test[,c("Attrition")])
+
+#Create the scoring dataset for submission
+predictions_compset <- as.data.frame(predict(fit, data_compset, type="response"))
+names(predictions_compset) <- c("Attrition")
+predictions_compset %<>% mutate(attrition=case_when(Attrition < .5 ~ "No", Attrition >= .50 ~ "Yes"))
+predictions_compset$attrition <- as.factor(predictions_compset$attrition)
+predictions_compset <- predictions_compset[,!names(predictions_compset) %in% c("Attrition")]
+write.csv(predictions_compset, file="C:/Users/b007224/Documents/masters_in_data_science/SMU-MSDS/DDS/CaseStudy02/Case2PredictionsFORD Attrition.csv")
+```
+
+The sensitivity for the logistic regression was increased from 96.82% to 96.90% and the specificity increased from 31.71% to 61.70%, a significant improvement over the kNN model. 
+
+## Predicting Monthly Income
+
+Correlation measures the strength of the relationship between 2 variables. The correlation coefficient ranges from -1 to 1, with 0 being no relationship. The correlation matrix below highlights the level of correlation between numeric variables. The variables with the highest correlation to monthly income are:
+
+* Job Level - correlation 0.95
+* Total Working Years - correlation 0.78
+* Years at Current Company - correlation 0.49
+* Age - correlation 0.48
+
+```{r corr,fig.height=10,fig.width=10}
+corr <- round(cor(select_if(data1,is.numeric)),2)
+ggcorrplot(corr,colors=c("#F8766D","White","#00BFC4")) + ggtitle("Variable Correlations")
+```
+
+I use multiple linear regression, with a cross validation split of 70%/30%, to predict the monthly income for employees based on the variables above. I tried a variety of transformations, interactions, and variables to come up with the model below. I ended up with no transformations and one interaction. Total Years Working and Years at Company were both highly correlated with Monthly Income. However, separately these variables do not give a good indication of Monthly Income. I found that by adding these variables together I ended up with a better model.
+
+```{r salary,fig.height=10,fig.width=10}
+library(car)
+
+#Add an interaction variable for years at the company and total working years
+data_income <- data1
+data_income$Years_Interaction <- data_income$YearsAtCompany + data_income$TotalWorkingYears
+
+data_salary_compset$Years_Interaction <- data_salary_compset$YearsAtCompany + data_salary_compset$TotalWorkingYears
+
+#Specify the training dataset size of 70%
+sampleSize <- sample(1:nrow(data_income), .7 * nrow(data_income))
+
+#Create the training and test datasets based on the indices above
+Train <- data_income[sampleSize,]
+Test <- data_income[-sampleSize,]
+
+#Model
+fit <- lm(data=Train, MonthlyIncome ~ JobLevel + Years_Interaction + Age)
+```
+
+Below is a scatterplot matrix showing how the variables in the model relate to one another.
+
+```{r salary1}
+pairs(data_income[,c("MonthlyIncome","JobLevel","Years_Interaction","Age")], col="#00BFC4")
+```
+
+I also checked for covariance between variables in the model to ensure that I don't have extraneous variables in the model. If two variables have high covariance one may not be needed. Adding in more variables than needed decreases the adjusted R-square. The VIFs below are all below 10, so covariance is not an issue.
+
+```{r salary2}
+car::vif(fit)
+```
+
+Next, I checked the assumptions for multiple linear regression. The Residuals vs Fitted plot is slightly concerning because I do not see a random cloud and there may be some difference in variance. However, the Scale-Location plot, which shows standardized residuals, does not have provide sufficient evidence to suggest variance is not constant. The residuals do appear to have a linear relationship and they are normally distributed (QQ plot). The Cook's distance plot would identify any observations with extreme influence on the model. All Cook's distance scores are 0.05 or less, and not a cause for concern.
+
+```{r salary3}
+par(mfrow=c(2,2))
+plot(fit,which=1:4, col="#00BFC4")
+```
+
+Below is the summary of the model, with parameter estimates, p-values, etc. Not all p-values are significant at the 0.05 level, but the model itself is significant with the p-value for the F-statistic < .0001. The adjusted R-square is 91%.
+
+```{r salary4}
+summary(fit)
+```
+
+The RMSE (root mean squared error) for the 70%/30% cross validation split is $1,418. This is a relative measure of absolute fit for the model, the lower this number the better.
+
+```{r salary5}
+predictions <- fit %>% predict(Test)
+RMSE = RMSE(predictions, Test$MonthlyIncome)
+RMSE
+
+predictions_salary <- fit %>% predict(data_salary_compset)
+write.csv(predictions_salary, file="C:/Users/b007224/Documents/masters_in_data_science/SMU-MSDS/DDS/CaseStudy02/Case2PredictionsFORD Salary.csv")
+```
+
+## Conclusion
+
+To retain employees, there are several groups of employees that can be targeted to have the largest impact: Sales Representatives, younger employees, employees at low job levels, employees who have been with the company 1 year and employees with low stock option levels. Getting employees more involved should also have a positive impact on attrition rates.
+
+The logistic regression model detailed above is able to correctly predict attrition 91% of the time. 
+
+Good predictions for monthly income can be found using a linear regression model and job level, age, years at the company and years in the work force. 91% of the variance in monthly salary can be explained by this model.
+
+The video for the presentation can be found [here](https://youtu.be/SV-4SdrPglE).
+All materials for this analysis can be found on the Github site [here](https://github.com/JennaFord/SMU-MSDS/tree/master/DDS/CaseStudy02).
